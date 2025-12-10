@@ -204,3 +204,9 @@ type TransactionProcessingServiceInterface interface {
 	ProcessQueueItem(ctx context.Context, queueItem *models.ProcessingQueueItem) error
 	GetQueueMetrics() (*dto.QueueMetrics, error)
 }
+
+// NorthwindClientInterface defines the interface for interacting with the Northwind API.
+type NorthwindClientInterface interface {
+	// HealthCheck performs a health check against the Northwind API.
+	HealthCheck(ctx context.Context) error
+}
