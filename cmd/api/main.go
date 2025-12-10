@@ -117,6 +117,9 @@ func main() {
 	accountAssociationService := services.NewAccountAssociationService(userRepo, accountRepo, auditService, slog.Default())
 	customerLogger := services.NewCustomerLogger(slog.Default())
 
+	// Initialize Northwind Client
+	northwindClient := services.NewNorthwindClient(cfg.Northwind.APIKey)
+
 	processingCtx, cancelProcessing := context.WithCancel(context.Background())
 	defer cancelProcessing()
 
@@ -131,7 +134,7 @@ func main() {
 	accountSummaryHandler := handlers.NewAccountSummaryHandler(accountSummaryService, accountMetricsService, statementService)
 	devHandler := handlers.NewDevHandler(transactionRepo, accountRepo)
 	customerHandler := handlers.NewCustomerHandler(customerSearchService, customerProfileService, accountAssociationService, passwordService, auditService, customerLogger, prometheusMetrics)
-	healthCheckHandler := handlers.NewHealthCheckHandler(db)
+	healthCheckHandler := handlers.NewHealthCheckHandler(db, northwindClient)
 	docsHandler := handlers.NewDocsHandler()
 
 	api := e.Group("/api/v1")
