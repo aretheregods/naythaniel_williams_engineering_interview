@@ -139,3 +139,9 @@ type BlacklistedTokenRepositoryInterface interface {
 	GetByJTI(jti string) (*models.BlacklistedToken, error)
 	DeleteExpired() (int64, error)
 }
+
+// ExternalAccountRepositoryInterface defines the contract for external account repository operations.
+type ExternalAccountRepositoryInterface interface {
+	Create(account *models.ExternalAccount) error
+	ListByUserID(userID uuid.UUID) ([]models.ExternalAccount, error)
+}
