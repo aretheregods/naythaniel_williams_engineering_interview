@@ -630,6 +630,72 @@ func (h *AccountHandler) mapTransferErr(c echo.Context, ctx context.Context, tra
 	return SendSystemError(c, svcErr)
 }
 
+// InitiateExternalTransfer initiates a transfer to a registered external account.
+// @Summary Initiate external transfer
+// @Description Start a transfer from one of your accounts to a registered external payee.
+// @Tags Accounts
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param accountId path string true "Source Account ID (UUID)"
+// @Param Idempotency-Key header string true "Unique key to ensure idempotent transfers"
+// @Param request body dto.InitiateExternalTransferRequest true "External transfer details"
+// @Success 202 {object} models.Transfer "Transfer initiated successfully and is now processing"
+// @Failure 400 {object} errors.ErrorResponse "VALIDATION_001 - Invalid request body or parameters"
+// @Failure 401 {object} errors.ErrorResponse "AUTH_002 - Missing or invalid authentication"
+// @Failure 403 {object} errors.ErrorResponse "AUTH_005 - Account belongs to another user"
+// @Failure 404 {object} errors.ErrorResponse "ACCOUNT_001 - Source or destination account not found"
+// @Failure 409 {object} errors.ErrorResponse "Duplicate idempotency key with pending or failed transfer"
+// @Failure 422 {object} errors.ErrorResponse "TRANSACTION_003 - Insufficient funds"
+// @Failure 503 {object} errors.ErrorResponse "SYSTEM_003 - External banking partner unavailable"
+// @Router /accounts/{accountId}/external-transfer [post]
+func (h *AccountHandler) InitiateExternalTransfer(c echo.Context) error {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		return SendError(c, errors.AuthMissingToken)
+	}
+
+	idempotencyKey := c.Request().Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		return SendError(c, errors.ValidationRequiredField, errors.WithDetails("Idempotency-Key header is required"))
+	}
+
+	fromAccountID, err := uuid.Parse(c.Param("accountId"))
+	if err != nil {
+		return SendError(c, errors.ValidationInvalidFormat, errors.WithDetails("Invalid source account ID"))
+	}
+
+	var req dto.InitiateExternalTransferRequest
+	if err := c.Bind(&req); err != nil {
+		return SendError(c, errors.ValidationGeneral, errors.WithDetails("Invalid request body"))
+	}
+
+	if err := c.Validate(req); err != nil {
+		return SendError(c, errors.ValidationGeneral, errors.WithDetails(err.Error()))
+	}
+
+	toExternalAccountID, err := uuid.Parse(req.ToExternalAccountID)
+	if err != nil {
+		return SendError(c, errors.ValidationInvalidFormat, errors.WithDetails("Invalid destination external account ID"))
+	}
+
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return SendError(c, errors.TransactionInvalidAmount, errors.WithDetails("Invalid amount"))
+	}
+
+	transfer, err := h.accountService.InitiateExternalTransfer(c.Request().Context(), userID, fromAccountID, toExternalAccountID, amount, req.Description, req.TransferType, idempotencyKey)
+	if err != nil {
+		// Map service errors to HTTP errors
+		if errors.Is(err, services.ErrInsufficientFunds) {
+			return SendError(c, errors.TransferInsufficientFunds)
+		}
+		return h.mapTransferErr(c, c.Request().Context(), transfer, idempotencyKey, err)
+	}
+
+	return c.JSON(http.StatusAccepted, transfer)
+}
+
 // RegisterExternalAccount registers a new external account (payee) for transfers.
 // @Summary Register an external account
 // @Description Add a new Northwind Bank account as a payee for future transfers.
