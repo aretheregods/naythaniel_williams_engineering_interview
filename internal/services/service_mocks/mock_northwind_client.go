@@ -7,6 +7,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	dto "github.com/array/banking-api/internal/dto"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -45,4 +46,19 @@ func (m *MockNorthwindClientInterface) HealthCheck(ctx context.Context) error {
 func (mr *MockNorthwindClientInterfaceMockRecorder) HealthCheck(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HealthCheck", reflect.TypeOf((*MockNorthwindClientInterface)(nil).HealthCheck), ctx)
+}
+
+// CreateExternalAccount mocks base method.
+func (m *MockNorthwindClientInterface) CreateExternalAccount(ctx context.Context, details *dto.NorthwindCreateAccountRequest) (*dto.NorthwindExternalAccountResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateExternalAccount", ctx, details)
+	ret0, _ := ret[0].(*dto.NorthwindExternalAccountResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateExternalAccount indicates an expected call of CreateExternalAccount.
+func (mr *MockNorthwindClientInterfaceMockRecorder) CreateExternalAccount(ctx, details interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExternalAccount", reflect.TypeOf((*MockNorthwindClientInterface)(nil).CreateExternalAccount), ctx, details)
 }

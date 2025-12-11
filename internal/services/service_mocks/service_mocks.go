@@ -2020,3 +2020,41 @@ func (mr *MockTransactionProcessingServiceInterfaceMockRecorder) StartProcessing
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartProcessing", reflect.TypeOf((*MockTransactionProcessingServiceInterface)(nil).StartProcessing), ctx)
 }
+
+// MockExternalAccountServiceInterface is a mock of ExternalAccountServiceInterface interface.
+type MockExternalAccountServiceInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockExternalAccountServiceInterfaceMockRecorder
+}
+
+// MockExternalAccountServiceInterfaceMockRecorder is the mock recorder for MockExternalAccountServiceInterface.
+type MockExternalAccountServiceInterfaceMockRecorder struct {
+	mock *MockExternalAccountServiceInterface
+}
+
+// NewMockExternalAccountServiceInterface creates a new mock instance.
+func NewMockExternalAccountServiceInterface(ctrl *gomock.Controller) *MockExternalAccountServiceInterface {
+	mock := &MockExternalAccountServiceInterface{ctrl: ctrl}
+	mock.recorder = &MockExternalAccountServiceInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockExternalAccountServiceInterface) EXPECT() *MockExternalAccountServiceInterfaceMockRecorder {
+	return m.recorder
+}
+
+// Register mocks base method.
+func (m *MockExternalAccountServiceInterface) Register(ctx context.Context, userID uuid.UUID, req *dto.RegisterExternalAccountRequest) (*models.ExternalAccount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Register", ctx, userID, req)
+	ret0, _ := ret[0].(*models.ExternalAccount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Register indicates an expected call of Register.
+func (mr *MockExternalAccountServiceInterfaceMockRecorder) Register(ctx, userID, req interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockExternalAccountServiceInterface)(nil).Register), ctx, userID, req)
+}
