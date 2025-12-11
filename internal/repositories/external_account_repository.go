@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"errors"
 
 	"github.com/array/banking-api/internal/models"
 	"github.com/google/uuid"
@@ -12,6 +13,8 @@ type externalAccountRepository struct {
 	db *gorm.DB
 }
 
+var ErrExternalAccountNotFound = errors.New("external account not found")
+
 func NewExternalAccountRepository(db *gorm.DB) ExternalAccountRepositoryInterface {
 	return &externalAccountRepository{db: db}
 }
@@ -21,6 +24,17 @@ func (r *externalAccountRepository) Create(account *models.ExternalAccount) erro
 		return fmt.Errorf("failed to create external account: %w", err)
 	}
 	return nil
+}
+
+func (r *externalAccountRepository) GetByID(id uuid.UUID) (*models.ExternalAccount, error) {
+	var account models.ExternalAccount
+	if err := r.db.First(&account, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrExternalAccountNotFound
+		}
+		return nil, fmt.Errorf("failed to find external account by id: %w", err)
+	}
+	return &account, nil
 }
 
 func (r *externalAccountRepository) ListByUserID(userID uuid.UUID) ([]models.ExternalAccount, error) {
