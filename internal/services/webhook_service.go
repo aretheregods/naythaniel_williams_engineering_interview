@@ -88,19 +88,25 @@ func (s *webhookService) ProcessPendingWebhooks(ctx context.Context) {
 			Reason:      notification.Transfer.ErrorMessage,
 		}
 
-		err := s.regulatorClient.SendTransferNotification(ctx, payload)
+		statusCode, responseBody, err := s.regulatorClient.SendTransferNotification(ctx, payload)
 
 		now := time.Now()
 		notification.LastAttemptAt = &now
 		notification.Attempts++
+		notification.ResponseStatusCode = &statusCode
+		if responseBody != "" {
+			notification.ResponseBody = &responseBody
+		}
 
 		if err != nil {
 			s.logger.Warn("failed to send webhook notification", "error", err, "notification_id", notification.ID, "attempt", notification.Attempts)
 			notification.Status = models.WebhookStatusFailed
-			// Exponential backoff: 1m, 2m, 4m, 8m, 16m
-			backoffDuration := initialBackoffPeriod * time.Duration(math.Pow(2, float64(notification.Attempts-1)))
-			nextAttempt := now.Add(backoffDuration)
-			notification.NextAttemptAt = &nextAttempt
+			if notification.Attempts < models.WebhookMaxAttempts {
+				// Exponential backoff: 1m, 2m, 4m, 8m
+				backoffDuration := initialBackoffPeriod * time.Duration(math.Pow(2, float64(notification.Attempts-1)))
+				nextAttempt := now.Add(backoffDuration)
+				notification.NextAttemptAt = &nextAttempt
+			}
 		} else {
 			s.logger.Info("successfully sent webhook notification", "notification_id", notification.ID)
 			notification.Status = models.WebhookStatusSent

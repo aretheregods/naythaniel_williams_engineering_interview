@@ -72,7 +72,7 @@ func (s *HealthHandlerSuite) TestHealthCheck_AllHealthy() {
 	s.Equal("ok", response["status"])
 	dependencies := response["dependencies"].(map[string]interface{})
 	s.Equal("ok", dependencies["database"])
-	s.Equal("ok", dependencies["northwind_api"])
+	s.Equal("ok", dependencies["external_partner_api"])
 }
 
 func (s *HealthHandlerSuite) TestHealthCheck_DBUnhealthy() {
@@ -97,7 +97,7 @@ func (s *HealthHandlerSuite) TestHealthCheck_DBUnhealthy() {
 	s.Equal("error", response["status"])
 	dependencies := response["dependencies"].(map[string]interface{})
 	s.Equal("error", dependencies["database"])
-	s.Equal("ok", dependencies["northwind_api"])
+	s.Equal("ok", dependencies["external_partner_api"])
 }
 
 func (s *HealthHandlerSuite) TestHealthCheck_NorthwindUnhealthy() {
@@ -119,7 +119,7 @@ func (s *HealthHandlerSuite) TestHealthCheck_NorthwindUnhealthy() {
 	s.Equal("error", response["status"])
 	dependencies := response["dependencies"].(map[string]interface{})
 	s.Equal("ok", dependencies["database"])
-	s.Equal("error", dependencies["northwind_api"])
+	s.Equal("error", dependencies["external_partner_api"])
 }
 
 func (s *HealthHandlerSuite) TestHealthCheck_AllUnhealthy() {
@@ -144,5 +144,5 @@ func (s *HealthHandlerSuite) TestHealthCheck_AllUnhealthy() {
 	s.Equal("error", response["status"])
 	dependencies := response["dependencies"].(map[string]interface{})
 	s.Equal("error", dependencies["database"])
-	s.Equal("error", dependencies["northwind_api"])
+	s.Equal("error", dependencies["external_partner_api"])
 }

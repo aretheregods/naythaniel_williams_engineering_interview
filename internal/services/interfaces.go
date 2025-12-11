@@ -234,7 +234,7 @@ type TransferMonitorServiceInterface interface {
 // RegulatorClientInterface defines the contract for sending notifications to the regulator.
 type RegulatorClientInterface interface {
 	// SendTransferNotification sends a webhook notification about a transfer's final status.
-	SendTransferNotification(ctx context.Context, payload *dto.RegulatorNotificationPayload) error
+	SendTransferNotification(ctx context.Context, payload *dto.RegulatorNotificationPayload) (statusCode int, responseBody string, err error)
 }
 
 // WebhookServiceInterface defines the contract for managing and sending webhooks.

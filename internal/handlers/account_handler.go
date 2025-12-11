@@ -698,7 +698,7 @@ func (h *AccountHandler) InitiateExternalTransfer(c echo.Context) error {
 
 // RegisterExternalAccount registers a new external account (payee) for transfers.
 // @Summary Register an external account
-// @Description Add a new Northwind Bank account as a payee for future transfers.
+// @Description Add a new external bank account as a payee for future transfers.
 // @Tags Accounts
 // @Security BearerAuth
 // @Accept json
@@ -708,7 +708,7 @@ func (h *AccountHandler) InitiateExternalTransfer(c echo.Context) error {
 // @Failure 400 {object} errors.ErrorResponse "VALIDATION_001 - Invalid request body or validation error"
 // @Failure 401 {object} errors.ErrorResponse "AUTH_002 - Missing or invalid authentication"
 // @Failure 500 {object} errors.ErrorResponse "SYSTEM_001 - Internal server error"
-// @Failure 503 {object} errors.ErrorResponse "SYSTEM_003 - Northwind API unavailable"
+// @Failure 503 {object} errors.ErrorResponse "SYSTEM_003 - External banking partner unavailable"
 // @Router /accounts/external [post]
 func (h *AccountHandler) RegisterExternalAccount(c echo.Context) error {
 	userID, err := getUserIDFromContext(c)
@@ -728,7 +728,7 @@ func (h *AccountHandler) RegisterExternalAccount(c echo.Context) error {
 	account, err := h.externalAccountService.Register(c.Request().Context(), userID, &req)
 	if err != nil {
 		if errors.Is(err, services.ErrRegistrationFailed) {
-			return SendError(c, errors.SystemServiceUnavailable, errors.WithDetails("Could not connect to Northwind Bank."))
+			return SendError(c, errors.SystemServiceUnavailable, errors.WithDetails("Could not connect to the external bank."))
 		}
 		return SendSystemError(c, err)
 	}

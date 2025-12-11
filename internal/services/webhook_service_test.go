@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -85,14 +86,27 @@ func (s *WebhookServiceTestSuite) TestProcessPendingWebhooks_Success() {
 	}
 
 	s.webhookRepo.EXPECT().FindPending(gomock.Any()).Return([]models.WebhookNotification{notification}, nil)
-	s.regulatorClient.EXPECT().SendTransferNotification(gomock.Any(), gomock.Any()).Return(nil)
+	s.regulatorClient.EXPECT().SendTransferNotification(gomock.Any(), gomock.Any()).Return(http.StatusAccepted, `{"status":"received"}`, nil)
 	s.webhookRepo.EXPECT().Update(gomock.Any()).DoAndReturn(func(n *models.WebhookNotification) error {
 		s.Equal(models.WebhookStatusSent, n.Status)
 		s.Equal(1, n.Attempts)
 		s.NotNil(n.LastAttemptAt)
+		s.Equal(http.StatusAccepted, *n.ResponseStatusCode)
+		s.Contains(*n.ResponseBody, "received")
 		return nil
 	})
 
+	s.service.ProcessPendingWebhooks(context.Background())
+}
+
+func (s *WebhookServiceTestSuite) TestProcessPendingWebhooks_FindPendingError() {
+	s.webhookRepo.EXPECT().FindPending(gomock.Any()).Return(nil, errors.New("database is down"))
+
+	// No other calls should be made if fetching fails
+	s.regulatorClient.EXPECT().SendTransferNotification(gomock.Any(), gomock.Any()).Times(0)
+	s.webhookRepo.EXPECT().Update(gomock.Any()).Times(0)
+
+	// The service should log the error and return, not panic.
 	s.service.ProcessPendingWebhooks(context.Background())
 }
 
@@ -110,12 +124,14 @@ func (s *WebhookServiceTestSuite) TestProcessPendingWebhooks_RetryLogic() {
 	}
 
 	s.webhookRepo.EXPECT().FindPending(gomock.Any()).Return([]models.WebhookNotification{notification}, nil)
-	s.regulatorClient.EXPECT().SendTransferNotification(gomock.Any(), gomock.Any()).Return(errors.New("regulator is down"))
+	s.regulatorClient.EXPECT().SendTransferNotification(gomock.Any(), gomock.Any()).Return(http.StatusInternalServerError, `{"error":"server unavailable"}`, errors.New("regulator is down"))
 	s.webhookRepo.EXPECT().Update(gomock.Any()).DoAndReturn(func(n *models.WebhookNotification) error {
 		s.Equal(models.WebhookStatusFailed, n.Status)
 		s.Equal(1, n.Attempts)
 		s.NotNil(n.LastAttemptAt)
 		s.NotNil(n.NextAttemptAt)
+		s.Equal(http.StatusInternalServerError, *n.ResponseStatusCode)
+		s.Contains(*n.ResponseBody, "server unavailable")
 		s.True(n.NextAttemptAt.After(time.Now())) // Next attempt is in the future
 		return nil
 	})

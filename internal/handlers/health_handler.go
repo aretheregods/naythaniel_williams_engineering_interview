@@ -26,11 +26,11 @@ func NewHealthCheckHandler(db *gorm.DB, northwindClient services.NorthwindClient
 
 // HealthCheck adds the health check endpoint
 // @Summary Health check
-// @Description Check the health of the API and its dependencies (e.g., database, Northwind API)
+// @Description Check the health of the API and its dependencies (e.g., database, external banking partners)
 // @Tags Health
 // @Produce json
-// @Success 200 {object} object{status=string,timestamp=string,dependencies=object{database=string,northwind_api=string}} "API is healthy"
-// @Failure 503 {object} object{status=string,timestamp=string,dependencies=object{database=string,northwind_api=string}} "API is unhealthy"
+// @Success 200 {object} object{status=string,timestamp=string,dependencies=object{database=string,external_partner_api=string}} "API is healthy"
+// @Failure 503 {object} object{status=string,timestamp=string,dependencies=object{database=string,external_partner_api=string}} "API is unhealthy"
 // @Router /health [get]
 func (h *HealthCheckHandler) HealthCheck(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(c.Request().Context(), 5*time.Second)
@@ -50,11 +50,11 @@ func (h *HealthCheckHandler) HealthCheck(c echo.Context) error {
 
 	// Check Northwind API
 	if err := h.northwindClient.HealthCheck(ctx); err != nil {
-		dependencies["northwind_api"] = "error"
+		dependencies["external_partner_api"] = "error"
 		isHealthy = false
 		c.Logger().Errorf("Northwind API health check failed: %v", err)
 	} else {
-		dependencies["northwind_api"] = "ok"
+		dependencies["external_partner_api"] = "ok"
 	}
 
 	status := "ok"

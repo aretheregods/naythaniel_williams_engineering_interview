@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	ErrRegistrationFailed = errors.New("failed to register external account with Northwind Bank")
+	ErrRegistrationFailed = errors.New("failed to register external account with external bank")
 )
 
 type externalAccountService struct {

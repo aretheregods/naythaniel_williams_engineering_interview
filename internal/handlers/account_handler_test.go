@@ -1008,7 +1008,7 @@ func (s *AccountHandlerSuite) TestRegisterExternalAccount_NorthwindFailure() {
 	err := s.handler.RegisterExternalAccount(c)
 	s.NoError(err)
 	s.Equal(http.StatusServiceUnavailable, rec.Code)
-	s.Contains(rec.Body.String(), "Could not connect to Northwind Bank")
+	s.Contains(rec.Body.String(), "Could not connect to the external bank")
 }
 
 func (s *AccountHandlerSuite) TestInitiateExternalTransfer_Success() {

@@ -34,6 +34,7 @@ func (s *RegulatorClientTestSuite) TestSendTransferNotification_Success() {
 		s.NoError(err)
 
 		w.WriteHeader(http.StatusAccepted)
+		w.Write([]byte(`{"status":"received"}`))
 	}))
 	defer server.Close()
 
@@ -49,8 +50,10 @@ func (s *RegulatorClientTestSuite) TestSendTransferNotification_Success() {
 		Amount:     "123.45",
 	}
 
-	err := client.SendTransferNotification(context.Background(), payload)
+	statusCode, body, err := client.SendTransferNotification(context.Background(), payload)
 	s.NoError(err)
+	s.Equal(http.StatusAccepted, statusCode)
+	s.Contains(body, "received")
 	s.Equal(payload.TransferID, receivedPayload.TransferID)
 	s.Equal(payload.Status, receivedPayload.Status)
 }
@@ -58,6 +61,7 @@ func (s *RegulatorClientTestSuite) TestSendTransferNotification_Success() {
 func (s *RegulatorClientTestSuite) TestSendTransferNotification_APIFailure() {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"internal server error"}`))
 	}))
 	defer server.Close()
 
@@ -65,8 +69,10 @@ func (s *RegulatorClientTestSuite) TestSendTransferNotification_APIFailure() {
 	client := NewRegulatorClient(cfg)
 	payload := &dto.RegulatorNotificationPayload{TransferID: uuid.New()}
 
-	err := client.SendTransferNotification(context.Background(), payload)
+	statusCode, body, err := client.SendTransferNotification(context.Background(), payload)
 	s.Error(err)
+	s.Equal(http.StatusInternalServerError, statusCode)
+	s.Contains(body, "internal server error")
 	s.Contains(err.Error(), "regulator client: webhook returned non-2xx status: 500")
 }
 
@@ -75,8 +81,10 @@ func (s *RegulatorClientTestSuite) TestSendTransferNotification_NoURLConfigured(
 	client := NewRegulatorClient(cfg)
 	payload := &dto.RegulatorNotificationPayload{TransferID: uuid.New()}
 
-	err := client.SendTransferNotification(context.Background(), payload)
+	statusCode, body, err := client.SendTransferNotification(context.Background(), payload)
 	s.NoError(err) // Should return nil and not block the queue
+	s.Equal(http.StatusOK, statusCode)
+	s.Contains(body, "No-op")
 }
 
 func (s *RegulatorClientTestSuite) TestSendTransferNotification_NetworkError() {
@@ -85,7 +93,9 @@ func (s *RegulatorClientTestSuite) TestSendTransferNotification_NetworkError() {
 	client := NewRegulatorClient(cfg)
 	payload := &dto.RegulatorNotificationPayload{TransferID: uuid.New()}
 
-	err := client.SendTransferNotification(context.Background(), payload)
+	statusCode, body, err := client.SendTransferNotification(context.Background(), payload)
 	s.Error(err)
+	s.Equal(0, statusCode)
+	s.Empty(body)
 	s.Contains(err.Error(), "regulator client: webhook request failed")
 }

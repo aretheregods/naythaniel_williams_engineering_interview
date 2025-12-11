@@ -2147,11 +2147,13 @@ func (m *MockRegulatorClientInterface) EXPECT() *MockRegulatorClientInterfaceMoc
 }
 
 // SendTransferNotification mocks base method.
-func (m *MockRegulatorClientInterface) SendTransferNotification(ctx context.Context, payload *dto.RegulatorNotificationPayload) error {
+func (m *MockRegulatorClientInterface) SendTransferNotification(ctx context.Context, payload *dto.RegulatorNotificationPayload) (int, string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendTransferNotification", ctx, payload)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // SendTransferNotification indicates an expected call of SendTransferNotification.
