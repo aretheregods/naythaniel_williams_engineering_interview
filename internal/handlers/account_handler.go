@@ -646,7 +646,7 @@ func (h *AccountHandler) mapTransferErr(c echo.Context, ctx context.Context, tra
 // @Failure 403 {object} errors.ErrorResponse "AUTH_005 - Account belongs to another user"
 // @Failure 404 {object} errors.ErrorResponse "ACCOUNT_001 - Source or destination account not found"
 // @Failure 409 {object} errors.ErrorResponse "Duplicate idempotency key with pending or failed transfer"
-// @Failure 422 {object} errors.ErrorResponse "TRANSACTION_003 - Insufficient funds"
+// @Failure 422 {object} errors.ErrorResponse "TRANSFER_004 - Insufficient funds"
 // @Failure 503 {object} errors.ErrorResponse "SYSTEM_003 - External banking partner unavailable"
 // @Router /accounts/{accountId}/external-transfer [post]
 func (h *AccountHandler) InitiateExternalTransfer(c echo.Context) error {
@@ -686,9 +686,8 @@ func (h *AccountHandler) InitiateExternalTransfer(c echo.Context) error {
 
 	transfer, err := h.accountService.InitiateExternalTransfer(c.Request().Context(), userID, fromAccountID, toExternalAccountID, amount, req.Description, req.TransferType, idempotencyKey)
 	if err != nil {
-		// Map service errors to HTTP errors
-		if errors.Is(err, services.ErrInsufficientFunds) {
-			return SendError(c, errors.TransferInsufficientFunds)
+		if errors.Is(err, services.ErrExternalTransferFailed) {
+			return SendError(c, errors.SystemServiceUnavailable, errors.WithDetails("External banking partner is unavailable."))
 		}
 		return h.mapTransferErr(c, c.Request().Context(), transfer, idempotencyKey, err)
 	}

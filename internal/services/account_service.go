@@ -22,6 +22,7 @@ var (
 	ErrAccountNotActive         = errors.New("account is not active")
 	ErrUnauthorized             = errors.New("unauthorized access to account")
 	ErrInvalidAmount            = errors.New("invalid amount")
+	ErrExternalTransferFailed   = errors.New("failed to initiate transfer with external bank")
 	ErrSameAccountTransfer      = errors.New("cannot transfer to same account")
 	ErrAccountClosureNotAllowed = errors.New("account closure not allowed")
 	ErrTransferPending          = errors.New("transfer is still processing with this idempotency key")
@@ -812,7 +813,7 @@ func (s *accountService) InitiateExternalTransfer(ctx context.Context, userID, f
 		transfer.Fail(fmt.Sprintf("Northwind API error: %v", err))
 		s.transferRepo.Update(transfer)
 		s.logger.Error("failed to initiate transfer with Northwind, debit must be reversed", "transfer_id", transfer.ID, "debit_tx_id", debitTx.ID)
-		return nil, fmt.Errorf("failed to initiate transfer with external bank: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrExternalTransferFailed, err)
 	}
 
 	transfer.ExternalTransferID = &northwindResp.ID
