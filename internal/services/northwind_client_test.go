@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/array/banking-api/internal/dto"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -154,4 +155,50 @@ func (s *NorthwindClientTestSuite) TestCreateExternalAccount_BadResponseBody() {
 	s.Error(err)
 	s.Nil(resp)
 	s.Contains(err.Error(), "northwind client: failed to decode response body")
+}
+
+func (s *NorthwindClientTestSuite) TestInitiateTransfer_Success() {
+	apiKey := "test-api-key"
+	expectedTransferID := "txn_12345"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.Equal(http.MethodPost, r.Method)
+		s.Equal("/api/v1/transfers", r.URL.Path)
+		s.Equal(apiKey, r.Header.Get("X-Api-Key"))
+
+		var reqBody dto.NorthwindInitiateTransferRequest
+		err := json.NewDecoder(r.Body).Decode(&reqBody)
+		s.NoError(err)
+		s.Equal("12345", reqBody.SourceAccountID)
+		s.Equal("debit", reqBody.Direction)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(dto.NorthwindInitiateTransferResponse{
+			ID:     expectedTransferID,
+			Status: "processing",
+		})
+	}))
+	defer server.Close()
+
+	client := &northwindClient{
+		httpClient: server.Client(),
+		apiKey:     apiKey,
+		baseURL:    server.URL + "/api/v1",
+	}
+
+	req := &dto.NorthwindInitiateTransferRequest{
+		SourceAccountID:      "12345",
+		DestinationAccountID: uuid.New().String(),
+		Amount:               "100.00",
+		Direction:            "debit",
+		TransferType:         "standard",
+	}
+
+	resp, err := client.InitiateTransfer(context.Background(), req)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal(expectedTransferID, resp.ID)
+	s.Equal("processing", resp.Status)
+}
 }
