@@ -52,6 +52,31 @@ func (s *ExternalAccountRepositoryTestSuite) TestCreate_Success() {
 	s.Equal(account.ExternalAccountID, found.ExternalAccountID)
 }
 
+func (s *ExternalAccountRepositoryTestSuite) TestGetByID_Success() {
+	account := &models.ExternalAccount{
+		UserID:            s.user.ID,
+		ExternalAccountID: uuid.New(),
+		Nickname:          "Test Get By ID",
+		AccountNumberMask: "5678",
+		NameOnAccount:     gofakeit.Name(),
+		BankName:          "Test Bank",
+	}
+	s.NoError(s.repo.Create(account))
+
+	found, err := s.repo.GetByID(account.ID)
+	s.NoError(err)
+	s.NotNil(found)
+	s.Equal(account.ID, found.ID)
+	s.Equal(account.Nickname, found.Nickname)
+}
+
+func (s *ExternalAccountRepositoryTestSuite) TestGetByID_NotFound() {
+	found, err := s.repo.GetByID(uuid.New())
+	s.Error(err)
+	s.Nil(found)
+	s.ErrorIs(err, ErrExternalAccountNotFound)
+}
+
 func (s *ExternalAccountRepositoryTestSuite) TestListByUserID() {
 	// Create 2 accounts for the main user
 	acc1 := &models.ExternalAccount{
