@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/array/banking-api/internal/models"
 	"github.com/array/banking-api/internal/repositories"
+	"github.com/array/banking-api/internal/dto"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
@@ -31,6 +33,8 @@ type accountService struct {
 	accountRepo     repositories.AccountRepositoryInterface
 	transactionRepo repositories.TransactionRepositoryInterface
 	transferRepo    repositories.TransferRepositoryInterface
+	externalAccountRepo repositories.ExternalAccountRepositoryInterface
+	northwindClient NorthwindClientInterface
 	userRepo        repositories.UserRepositoryInterface
 	auditRepo       repositories.AuditLogRepositoryInterface
 	logger          *slog.Logger
@@ -41,6 +45,8 @@ func NewAccountService(
 	accountRepo repositories.AccountRepositoryInterface,
 	transactionRepo repositories.TransactionRepositoryInterface,
 	transferRepo repositories.TransferRepositoryInterface,
+	externalAccountRepo repositories.ExternalAccountRepositoryInterface,
+	northwindClient NorthwindClientInterface,
 	userRepo repositories.UserRepositoryInterface,
 	auditRepo repositories.AuditLogRepositoryInterface,
 	logger *slog.Logger,
@@ -49,6 +55,8 @@ func NewAccountService(
 		accountRepo:     accountRepo,
 		transactionRepo: transactionRepo,
 		transferRepo:    transferRepo,
+		externalAccountRepo: externalAccountRepo,
+		northwindClient:     northwindClient,
 		userRepo:        userRepo,
 		auditRepo:       auditRepo,
 		logger:          logger,
@@ -574,7 +582,7 @@ func (s *accountService) retrieveAndAuthorizeAccounts(
 		return nil, nil, fmt.Errorf("failed to get destination account: %w", err)
 	}
 
-	if fromAccount.UserID != userID {
+	if fromAccount.UserID != userID || toAccount.UserID != userID {
 		return nil, nil, errors.New("not authorized to transfer from this account")
 	}
 
@@ -596,7 +604,7 @@ func (s *accountService) executeTransfer(
 ) (*models.Transfer, uuid.UUID, uuid.UUID, error) {
 	transfer := &models.Transfer{
 		FromAccountID:  fromAccount.ID,
-		ToAccountID:    toAccount.ID,
+		ToAccountID:    &toAccount.ID,
 		Amount:         amount,
 		Description:    description,
 		IdempotencyKey: idempotencyKey,
@@ -686,6 +694,84 @@ func (s *accountService) handleTransferSuccess(
 	}
 
 	return nil
+}
+
+// InitiateExternalTransfer handles the logic for starting a transfer to a registered external account.
+func (s *accountService) InitiateExternalTransfer(ctx context.Context, userID, fromAccountID, toExternalAccountID uuid.UUID, amount decimal.Decimal, description, transferType, idempotencyKey string) (*models.Transfer, error) {
+	if amount.LessThanOrEqual(decimal.Zero) {
+		return nil, ErrInvalidAmount
+	}
+
+	if existingTransfer, err := s.checkExistingTransfer(idempotencyKey); existingTransfer != nil || err != nil {
+		return existingTransfer, err
+	}
+
+	fromAccount, err := s.accountRepo.GetByID(fromAccountID)
+	if err != nil {
+		return nil, ErrAccountNotFound
+	}
+	if fromAccount.UserID != userID {
+		return nil, ErrUnauthorized
+	}
+	if !fromAccount.IsActive() {
+		return nil, ErrAccountNotActive
+	}
+	if !fromAccount.CanWithdraw(amount) {
+		return nil, ErrInsufficientFunds
+	}
+
+	toExternalAccount, err := s.externalAccountRepo.GetByID(toExternalAccountID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrExternalAccountNotFound) {
+			return nil, ErrAccountNotFound // Treat as a general not found for security
+		}
+		return nil, err
+	}
+	if toExternalAccount.UserID != userID {
+		return nil, ErrUnauthorized // User can only send to external accounts they registered
+	}
+
+	debitTx, err := s.PerformTransaction(fromAccountID, amount, models.TransactionTypeDebit, fmt.Sprintf("External Transfer to %s", toExternalAccount.Nickname), &userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to debit source account: %w", err)
+	}
+
+	transfer := &models.Transfer{
+		FromAccountID:       fromAccount.ID,
+		ToExternalAccountID: &toExternalAccount.ID,
+		Amount:              amount,
+		Description:         description,
+		IdempotencyKey:      idempotencyKey,
+		Status:              models.TransferStatusPending,
+		DebitTransactionID:  &debitTx.ID,
+	}
+
+	if err := s.transferRepo.Create(transfer); err != nil {
+		s.logger.Error("failed to create transfer record, debit must be manually reversed", "error", err, "debit_tx_id", debitTx.ID)
+		return nil, fmt.Errorf("failed to create transfer record: %w", err)
+	}
+
+	northwindReq := &dto.NorthwindInitiateTransferRequest{
+		SourceAccountID:      fromAccount.AccountNumber,
+		DestinationAccountID: toExternalAccount.ExternalAccountID.String(),
+		Amount:               amount.String(),
+		Direction:            "debit",
+		TransferType:         transferType,
+	}
+
+	northwindResp, err := s.northwindClient.InitiateTransfer(ctx, northwindReq)
+	if err != nil {
+		transfer.Fail(fmt.Sprintf("Northwind API error: %v", err))
+		s.transferRepo.Update(transfer)
+		s.logger.Error("failed to initiate transfer with Northwind, debit must be reversed", "transfer_id", transfer.ID, "debit_tx_id", debitTx.ID)
+		return nil, fmt.Errorf("failed to initiate transfer with external bank: %w", err)
+	}
+
+	transfer.ExternalTransferID = &northwindResp.ID
+	transfer.Status = northwindResp.Status // e.g., "processing"
+	s.transferRepo.Update(transfer)
+
+	return transfer, nil
 }
 
 // GetAccountTransactions retrieves transactions for an account

@@ -91,3 +91,38 @@ func (c *northwindClient) CreateExternalAccount(ctx context.Context, details *dt
 
 	return &response, nil
 }
+
+// InitiateTransfer starts a new transfer with the Northwind API.
+func (c *northwindClient) InitiateTransfer(ctx context.Context, req *dto.NorthwindInitiateTransferRequest) (*dto.NorthwindInitiateTransferResponse, error) {
+	requestBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("northwind client: failed to marshal transfer request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/transfers", c.baseURL), bytes.NewBuffer(requestBody))
+	if err != nil {
+		return nil, fmt.Errorf("northwind client: failed to create transfer request: %w", err)
+	}
+
+	httpReq.Header.Set("X-Api-Key", c.apiKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("northwind client: transfer request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("northwind client: initiate transfer returned non-201 status: %d", resp.StatusCode)
+	}
+
+	var response dto.NorthwindInitiateTransferResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("northwind client: failed to decode transfer response: %w", err)
+	}
+
+	return &response, nil
+}
+}
