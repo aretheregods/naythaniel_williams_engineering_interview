@@ -257,6 +257,20 @@ func (mr *MockAccountServiceInterfaceMockRecorder) GetUserTransfers(userID, filt
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserTransfers", reflect.TypeOf((*MockAccountServiceInterface)(nil).GetUserTransfers), userID, filters, offset, limit)
 }
 
+// HandleFailedExternalTransfer mocks base method.
+func (m *MockAccountServiceInterface) HandleFailedExternalTransfer(ctx context.Context, transfer *models.Transfer, reason string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HandleFailedExternalTransfer", ctx, transfer, reason)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// HandleFailedExternalTransfer indicates an expected call of HandleFailedExternalTransfer.
+func (mr *MockAccountServiceInterfaceMockRecorder) HandleFailedExternalTransfer(ctx, transfer, reason interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleFailedExternalTransfer", reflect.TypeOf((*MockAccountServiceInterface)(nil).HandleFailedExternalTransfer), ctx, transfer, reason)
+}
+
 // InitiateExternalTransfer mocks base method.
 func (m *MockAccountServiceInterface) InitiateExternalTransfer(ctx context.Context, userID, fromAccountID, toExternalAccountID uuid.UUID, amount decimal.Decimal, description, transferType, idempotencyKey string) (*models.Transfer, error) {
 	m.ctrl.T.Helper()
@@ -2072,4 +2086,163 @@ func (m *MockExternalAccountServiceInterface) Register(ctx context.Context, user
 func (mr *MockExternalAccountServiceInterfaceMockRecorder) Register(ctx, userID, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockExternalAccountServiceInterface)(nil).Register), ctx, userID, req)
+}
+
+// MockTransferMonitorServiceInterface is a mock of TransferMonitorServiceInterface interface.
+type MockTransferMonitorServiceInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockTransferMonitorServiceInterfaceMockRecorder
+}
+
+// MockTransferMonitorServiceInterfaceMockRecorder is the mock recorder for MockTransferMonitorServiceInterface.
+type MockTransferMonitorServiceInterfaceMockRecorder struct {
+	mock *MockTransferMonitorServiceInterface
+}
+
+// NewMockTransferMonitorServiceInterface creates a new mock instance.
+func NewMockTransferMonitorServiceInterface(ctrl *gomock.Controller) *MockTransferMonitorServiceInterface {
+	mock := &MockTransferMonitorServiceInterface{ctrl: ctrl}
+	mock.recorder = &MockTransferMonitorServiceInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTransferMonitorServiceInterface) EXPECT() *MockTransferMonitorServiceInterfaceMockRecorder {
+	return m.recorder
+}
+
+// MonitorPendingTransfers mocks base method.
+func (m *MockTransferMonitorServiceInterface) MonitorPendingTransfers(ctx context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "MonitorPendingTransfers", ctx)
+}
+
+// MonitorPendingTransfers indicates an expected call of MonitorPendingTransfers.
+func (mr *MockTransferMonitorServiceInterfaceMockRecorder) MonitorPendingTransfers(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MonitorPendingTransfers", reflect.TypeOf((*MockTransferMonitorServiceInterface)(nil).MonitorPendingTransfers), ctx)
+}
+
+// MockRegulatorClientInterface is a mock of RegulatorClientInterface interface.
+type MockRegulatorClientInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockRegulatorClientInterfaceMockRecorder
+}
+
+// MockRegulatorClientInterfaceMockRecorder is the mock recorder for MockRegulatorClientInterface.
+type MockRegulatorClientInterfaceMockRecorder struct {
+	mock *MockRegulatorClientInterface
+}
+
+// NewMockRegulatorClientInterface creates a new mock instance.
+func NewMockRegulatorClientInterface(ctrl *gomock.Controller) *MockRegulatorClientInterface {
+	mock := &MockRegulatorClientInterface{ctrl: ctrl}
+	mock.recorder = &MockRegulatorClientInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRegulatorClientInterface) EXPECT() *MockRegulatorClientInterfaceMockRecorder {
+	return m.recorder
+}
+
+// SendTransferNotification mocks base method.
+func (m *MockRegulatorClientInterface) SendTransferNotification(ctx context.Context, payload *dto.RegulatorNotificationPayload) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendTransferNotification", ctx, payload)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendTransferNotification indicates an expected call of SendTransferNotification.
+func (mr *MockRegulatorClientInterfaceMockRecorder) SendTransferNotification(ctx, payload interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTransferNotification", reflect.TypeOf((*MockRegulatorClientInterface)(nil).SendTransferNotification), ctx, payload)
+}
+
+// MockWebhookServiceInterface is a mock of WebhookServiceInterface interface.
+type MockWebhookServiceInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockWebhookServiceInterfaceMockRecorder
+}
+
+// MockWebhookServiceInterfaceMockRecorder is the mock recorder for MockWebhookServiceInterface.
+type MockWebhookServiceInterfaceMockRecorder struct {
+	mock *MockWebhookServiceInterface
+}
+
+// NewMockWebhookServiceInterface creates a new mock instance.
+func NewMockWebhookServiceInterface(ctrl *gomock.Controller) *MockWebhookServiceInterface {
+	mock := &MockWebhookServiceInterface{ctrl: ctrl}
+	mock.recorder = &MockWebhookServiceInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockWebhookServiceInterface) EXPECT() *MockWebhookServiceInterfaceMockRecorder {
+	return m.recorder
+}
+
+// ProcessPendingWebhooks mocks base method.
+func (m *MockWebhookServiceInterface) ProcessPendingWebhooks(ctx context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ProcessPendingWebhooks", ctx)
+}
+
+// ProcessPendingWebhooks indicates an expected call of ProcessPendingWebhooks.
+func (mr *MockWebhookServiceInterfaceMockRecorder) ProcessPendingWebhooks(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessPendingWebhooks", reflect.TypeOf((*MockWebhookServiceInterface)(nil).ProcessPendingWebhooks), ctx)
+}
+
+// QueueTransferNotification mocks base method.
+func (m *MockWebhookServiceInterface) QueueTransferNotification(ctx context.Context, transfer *models.Transfer) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueueTransferNotification", ctx, transfer)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// QueueTransferNotification indicates an expected call of QueueTransferNotification.
+func (mr *MockWebhookServiceInterfaceMockRecorder) QueueTransferNotification(ctx, transfer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueTransferNotification", reflect.TypeOf((*MockWebhookServiceInterface)(nil).QueueTransferNotification), ctx, transfer)
+}
+
+// MockNorthwindClientInterface is a mock of NorthwindClientInterface interface.
+type MockNorthwindClientInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockNorthwindClientInterfaceMockRecorder
+}
+
+// MockNorthwindClientInterfaceMockRecorder is the mock recorder for MockNorthwindClientInterface.
+type MockNorthwindClientInterfaceMockRecorder struct {
+	mock *MockNorthwindClientInterface
+}
+
+// NewMockNorthwindClientInterface creates a new mock instance.
+func NewMockNorthwindClientInterface(ctrl *gomock.Controller) *MockNorthwindClientInterface {
+	mock := &MockNorthwindClientInterface{ctrl: ctrl}
+	mock.recorder = &MockNorthwindClientInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockNorthwindClientInterface) EXPECT() *MockNorthwindClientInterfaceMockRecorder {
+	return m.recorder
+}
+
+// GetTransfer mocks base method.
+func (m *MockNorthwindClientInterface) GetTransfer(ctx context.Context, transferID string) (*dto.NorthwindGetTransferResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTransfer", ctx, transferID)
+	ret0, _ := ret[0].(*dto.NorthwindGetTransferResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTransfer indicates an expected call of GetTransfer.
+func (mr *MockNorthwindClientInterfaceMockRecorder) GetTransfer(ctx, transferID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransfer", reflect.TypeOf((*MockNorthwindClientInterface)(nil).GetTransfer), ctx, transferID)
 }

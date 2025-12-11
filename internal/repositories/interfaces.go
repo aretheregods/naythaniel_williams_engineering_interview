@@ -117,6 +117,7 @@ type TransferRepositoryInterface interface {
 	FindByID(id uuid.UUID) (*models.Transfer, error)
 	FindByIdempotencyKey(key string) (*models.Transfer, error)
 	FindByUserAccounts(accountIDs []uuid.UUID, offset, limit int) ([]models.Transfer, int64, error)
+	FindPendingExternal(limit int) ([]models.Transfer, error)
 	FindByUserAccountsWithFilters(accountIDs []uuid.UUID, filters models.TransferFilters, offset, limit int) ([]models.Transfer, int64, error)
 	CountByUserAccounts(accountIDs []uuid.UUID) (int64, error)
 }
@@ -145,4 +146,11 @@ type ExternalAccountRepositoryInterface interface {
 	Create(account *models.ExternalAccount) error
 	GetByID(id uuid.UUID) (*models.ExternalAccount, error)
 	ListByUserID(userID uuid.UUID) ([]models.ExternalAccount, error)
+}
+
+// WebhookNotificationRepositoryInterface defines the contract for webhook notification repository operations.
+type WebhookNotificationRepositoryInterface interface {
+	Create(notification *models.WebhookNotification) error
+	Update(notification *models.WebhookNotification) error
+	FindPending(limit int) ([]models.WebhookNotification, error)
 }

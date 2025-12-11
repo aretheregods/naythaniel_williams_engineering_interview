@@ -45,15 +45,15 @@ type UsersListResponse struct {
 
 // AuditLogResponse represents an audit log entry
 type AuditLogResponse struct {
-	ID         uuid.UUID         `json:"id"`
-	UserID     *uuid.UUID        `json:"userId,omitempty"`
-	Action     string            `json:"action"`
-	Resource   string            `json:"resource"`
-	ResourceID string            `json:"resourceId"`
-	IPAddress  string            `json:"ipAddress"`
-	UserAgent  string            `json:"userAgent"`
-	Metadata   models.JSONBMap   `json:"metadata,omitempty"`
-	CreatedAt  time.Time         `json:"createdAt"`
+	ID         uuid.UUID       `json:"id"`
+	UserID     *uuid.UUID      `json:"userId,omitempty"`
+	Action     string          `json:"action"`
+	Resource   string          `json:"resource"`
+	ResourceID string          `json:"resourceId"`
+	IPAddress  string          `json:"ipAddress"`
+	UserAgent  string          `json:"userAgent"`
+	Metadata   models.JSONBMap `json:"metadata,omitempty"`
+	CreatedAt  time.Time       `json:"createdAt"`
 }
 
 // AuditLogsListResponse represents a paginated list of audit logs

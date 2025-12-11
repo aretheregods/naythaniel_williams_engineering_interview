@@ -40,10 +40,10 @@ type NorthwindExternalAccountResponse struct {
 
 // NorthwindInitiateTransferRequest is the DTO for the request to Northwind's /transfers endpoint.
 type NorthwindInitiateTransferRequest struct {
-	SourceAccountID      string `json:"source_account_id"` // Our internal account number
+	SourceAccountID      string `json:"source_account_id"`      // Our internal account number
 	DestinationAccountID string `json:"destination_account_id"` // The Northwind account UUID
 	Amount               string `json:"amount"`
-	Direction            string `json:"direction"` // "debit" for sending money out
+	Direction            string `json:"direction"`     // "debit" for sending money out
 	TransferType         string `json:"transfer_type"` // "standard" or "express"
 }
 
@@ -51,4 +51,15 @@ type NorthwindInitiateTransferRequest struct {
 type NorthwindInitiateTransferResponse struct {
 	ID     string `json:"id"`
 	Status string `json:"status"`
+}
+
+// NorthwindGetTransferResponse is the DTO for the response from Northwind's GET /transfers/{id} endpoint.
+type NorthwindGetTransferResponse struct {
+	ID                   string    `json:"id"`
+	SourceAccountID      string    `json:"source_account_id"`
+	DestinationAccountID string    `json:"destination_account_id"`
+	Amount               string    `json:"amount"`
+	Direction            string    `json:"direction"`
+	Status               string    `json:"status"`
+	CreatedAt            time.Time `json:"created_at"`
 }

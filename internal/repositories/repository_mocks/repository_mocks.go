@@ -1313,6 +1313,21 @@ func (mr *MockTransferRepositoryInterfaceMockRecorder) FindByIdempotencyKey(key 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByIdempotencyKey", reflect.TypeOf((*MockTransferRepositoryInterface)(nil).FindByIdempotencyKey), key)
 }
 
+// FindPendingExternal mocks base method.
+func (m *MockTransferRepositoryInterface) FindPendingExternal(limit int) ([]models.Transfer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindPendingExternal", limit)
+	ret0, _ := ret[0].([]models.Transfer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindPendingExternal indicates an expected call of FindPendingExternal.
+func (mr *MockTransferRepositoryInterfaceMockRecorder) FindPendingExternal(limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPendingExternal", reflect.TypeOf((*MockTransferRepositoryInterface)(nil).FindPendingExternal), limit)
+}
+
 // FindByUserAccounts mocks base method.
 func (m *MockTransferRepositoryInterface) FindByUserAccounts(accountIDs []uuid.UUID, offset, limit int) ([]models.Transfer, int64, error) {
 	m.ctrl.T.Helper()

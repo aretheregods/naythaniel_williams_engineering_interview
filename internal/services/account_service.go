@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"math/rand"
 
+	"github.com/array/banking-api/internal/dto"
 	"github.com/array/banking-api/internal/models"
 	"github.com/array/banking-api/internal/repositories"
-	"github.com/array/banking-api/internal/dto"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
@@ -30,14 +30,15 @@ var (
 
 // accountService implements AccountServiceInterface interface
 type accountService struct {
-	accountRepo     repositories.AccountRepositoryInterface
-	transactionRepo repositories.TransactionRepositoryInterface
-	transferRepo    repositories.TransferRepositoryInterface
+	accountRepo         repositories.AccountRepositoryInterface
+	transactionRepo     repositories.TransactionRepositoryInterface
+	transferRepo        repositories.TransferRepositoryInterface
 	externalAccountRepo repositories.ExternalAccountRepositoryInterface
-	northwindClient NorthwindClientInterface
-	userRepo        repositories.UserRepositoryInterface
-	auditRepo       repositories.AuditLogRepositoryInterface
-	logger          *slog.Logger
+	northwindClient     NorthwindClientInterface
+	userRepo            repositories.UserRepositoryInterface
+	webhookService      WebhookServiceInterface
+	auditRepo           repositories.AuditLogRepositoryInterface
+	logger              *slog.Logger
 }
 
 // NewAccountService creates an account service with transfer and transaction support
@@ -46,20 +47,22 @@ func NewAccountService(
 	transactionRepo repositories.TransactionRepositoryInterface,
 	transferRepo repositories.TransferRepositoryInterface,
 	externalAccountRepo repositories.ExternalAccountRepositoryInterface,
+	webhookService WebhookServiceInterface,
 	northwindClient NorthwindClientInterface,
 	userRepo repositories.UserRepositoryInterface,
 	auditRepo repositories.AuditLogRepositoryInterface,
 	logger *slog.Logger,
 ) AccountServiceInterface {
 	return &accountService{
-		accountRepo:     accountRepo,
-		transactionRepo: transactionRepo,
-		transferRepo:    transferRepo,
+		accountRepo:         accountRepo,
+		transactionRepo:     transactionRepo,
+		transferRepo:        transferRepo,
 		externalAccountRepo: externalAccountRepo,
+		webhookService:      webhookService,
 		northwindClient:     northwindClient,
-		userRepo:        userRepo,
-		auditRepo:       auditRepo,
-		logger:          logger,
+		userRepo:            userRepo,
+		auditRepo:           auditRepo,
+		logger:              logger,
 	}
 }
 
@@ -515,6 +518,10 @@ func (s *accountService) TransferBetweenAccounts(
 		return nil, err
 	}
 
+	if s.webhookService != nil {
+		s.webhookService.QueueTransferNotification(context.Background(), transfer) // Use background context for out-of-band task
+	}
+
 	return transfer, nil
 }
 
@@ -693,6 +700,47 @@ func (s *accountService) handleTransferSuccess(
 		s.logger.Error("failed to create audit log", "error", err, "action", "transfer.completed")
 	}
 
+	return nil
+}
+
+// HandleFailedExternalTransfer reverses a failed external transfer by crediting the source account.
+func (s *accountService) HandleFailedExternalTransfer(ctx context.Context, transfer *models.Transfer, reason string) error {
+	if transfer.Status == models.TransferStatusFailed {
+		s.logger.Warn("attempted to handle already failed transfer", "transfer_id", transfer.ID)
+		return nil // Idempotent: already handled
+	}
+
+	fromAccount, err := s.accountRepo.GetByID(transfer.FromAccountID)
+	if err != nil {
+		s.logger.Error("failed to get source account for reversal", "transfer_id", transfer.ID, "account_id", transfer.FromAccountID, "error", err)
+		return fmt.Errorf("failed to get source account for reversal: %w", err)
+	}
+
+	// Create a reversal credit transaction
+	var reversalDescription string
+	if transfer.ExternalTransferID != nil {
+		reversalDescription = fmt.Sprintf("Reversal for failed transfer ref %s", *transfer.ExternalTransferID)
+	} else {
+		reversalDescription = "Reversal for failed transfer (no external ref)"
+	}
+	creditTx, err := s.PerformTransaction(transfer.FromAccountID, transfer.Amount, models.TransactionTypeCredit, reversalDescription, &fromAccount.UserID)
+	if err != nil {
+		s.logger.Error("CRITICAL: failed to create reversal transaction for failed external transfer", "transfer_id", transfer.ID, "error", err)
+		return fmt.Errorf("critical: failed to create reversal transaction: %w", err)
+	}
+
+	transfer.Fail(reason)
+	transfer.ReversalTransactionID = &creditTx.ID
+	if err := s.transferRepo.Update(transfer); err != nil {
+		s.logger.Error("failed to update transfer status to failed after reversal", "transfer_id", transfer.ID, "error", err)
+		return fmt.Errorf("failed to update transfer status: %w", err)
+	}
+
+	if s.webhookService != nil {
+		s.webhookService.QueueTransferNotification(ctx, transfer)
+	}
+
+	s.logger.Info("successfully reversed failed external transfer", "transfer_id", transfer.ID, "reversal_tx_id", creditTx.ID)
 	return nil
 }
 

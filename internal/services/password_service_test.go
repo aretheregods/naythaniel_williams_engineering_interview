@@ -15,11 +15,11 @@ import (
 // PasswordServiceTestSuite defines the test suite for PasswordService
 type PasswordServiceTestSuite struct {
 	suite.Suite
-	ctrl            *gomock.Controller
-	mockUserRepo    *repository_mocks.MockUserRepositoryInterface
-	mockAuditRepo   *repository_mocks.MockAuditLogRepositoryInterface
-	mockAuditSvc    AuditServiceInterface
-	service         PasswordServiceInterface
+	ctrl          *gomock.Controller
+	mockUserRepo  *repository_mocks.MockUserRepositoryInterface
+	mockAuditRepo *repository_mocks.MockAuditLogRepositoryInterface
+	mockAuditSvc  AuditServiceInterface
+	service       PasswordServiceInterface
 }
 
 // SetupTest runs before each test

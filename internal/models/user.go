@@ -22,18 +22,18 @@ var (
 )
 
 type User struct {
-	ID                  uuid.UUID  `gorm:"type:uuid;primary_key" json:"id"`
-	Email               string     `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
-	PasswordHash        string     `gorm:"type:varchar(255);not null" json:"-"`
-	FirstName           string     `gorm:"type:varchar(100);not null" json:"first_name"`
-	LastName            string     `gorm:"type:varchar(100);not null" json:"last_name"`
-	Role                string     `gorm:"type:varchar(20);not null;default:'customer'" json:"role"`
-	FailedLoginAttempts int        `gorm:"default:0" json:"-"`
-	LockedAt            *time.Time `gorm:"index" json:"locked_at,omitempty"`
-	LastLoginAt         *time.Time      `gorm:"index" json:"last_login_at,omitempty"`
-	CreatedAt           time.Time       `gorm:"not null" json:"created_at"`
-	UpdatedAt           time.Time       `gorm:"not null" json:"updated_at"`
-	DeletedAt           gorm.DeletedAt  `gorm:"index" json:"deleted_at,omitempty"`
+	ID                  uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
+	Email               string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
+	PasswordHash        string         `gorm:"type:varchar(255);not null" json:"-"`
+	FirstName           string         `gorm:"type:varchar(100);not null" json:"first_name"`
+	LastName            string         `gorm:"type:varchar(100);not null" json:"last_name"`
+	Role                string         `gorm:"type:varchar(20);not null;default:'customer'" json:"role"`
+	FailedLoginAttempts int            `gorm:"default:0" json:"-"`
+	LockedAt            *time.Time     `gorm:"index" json:"locked_at,omitempty"`
+	LastLoginAt         *time.Time     `gorm:"index" json:"last_login_at,omitempty"`
+	CreatedAt           time.Time      `gorm:"not null" json:"created_at"`
+	UpdatedAt           time.Time      `gorm:"not null" json:"updated_at"`
+	DeletedAt           gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	RefreshTokens     []RefreshToken     `gorm:"foreignKey:UserID" json:"-"`
 	BlacklistedTokens []BlacklistedToken `gorm:"foreignKey:UserID" json:"-"`

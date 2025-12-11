@@ -82,6 +82,22 @@ func (r *transferRepository) FindByIdempotencyKey(key string) (*models.Transfer,
 	return &transfer, nil
 }
 
+// FindPendingExternal retrieves external transfers that are in a non-terminal state.
+func (r *transferRepository) FindPendingExternal(limit int) ([]models.Transfer, error) {
+	var transfers []models.Transfer
+	// 'processing' is a status from Northwind, 'pending' is our initial state before Northwind confirms.
+	pendingStatuses := []string{models.TransferStatusPending, "processing"}
+
+	err := r.db.Where("to_external_account_id IS NOT NULL AND status IN ?", pendingStatuses).
+		Limit(limit).
+		Order("created_at ASC"). // Process oldest first
+		Find(&transfers).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to find pending external transfers: %w", err)
+	}
+	return transfers, nil
+}
+
 // FindByUserAccounts retrieves transfers involving any of the user's accounts
 func (r *transferRepository) FindByUserAccounts(accountIDs []uuid.UUID, offset, limit int) ([]models.Transfer, int64, error) {
 	return r.FindByUserAccountsWithFilters(accountIDs, models.TransferFilters{}, offset, limit)

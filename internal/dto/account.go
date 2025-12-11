@@ -71,10 +71,10 @@ type TransactionListResponse struct {
 
 // AccountSummaryResponse represents aggregated account information for a user
 type AccountSummaryResponse struct {
-	TotalBalance       decimal.Decimal              `json:"totalBalance"`
-	AccountCount       int                          `json:"accountCount"`
-	ActiveAccountCount int                          `json:"activeAccountCount"`
-	Accounts           []models.Account             `json:"accounts"`
+	TotalBalance       decimal.Decimal             `json:"totalBalance"`
+	AccountCount       int                         `json:"accountCount"`
+	ActiveAccountCount int                         `json:"activeAccountCount"`
+	Accounts           []models.Account            `json:"accounts"`
 	AccountsByType     map[string][]models.Account `json:"accountsByType"`
 }
 

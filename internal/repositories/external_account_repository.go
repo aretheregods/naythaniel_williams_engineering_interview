@@ -1,8 +1,8 @@
 package repositories
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 
 	"github.com/array/banking-api/internal/models"
 	"github.com/google/uuid"

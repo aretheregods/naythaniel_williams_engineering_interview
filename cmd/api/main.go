@@ -76,11 +76,17 @@ func main() {
 	// Initialize Northwind Client
 	northwindClient := services.NewNorthwindClient(cfg.Northwind.APIKey)
 
+	// Initialize Regulator Client and Webhook Service
+	regulatorClient := services.NewRegulatorClient(cfg.Regulator)
+	webhookNotificationRepo := repositories.NewWebhookNotificationRepository(db)
+	webhookService := services.NewWebhookService(webhookNotificationRepo, regulatorClient, cfg.Regulator)
+
 	accountService := services.NewAccountService(
 		accountRepo,
 		transactionRepo,
 		transferRepo,
 		externalAccountRepo,
+		webhookService,
 		northwindClient,
 		userRepo,
 		auditLogRepo,
@@ -123,12 +129,45 @@ func main() {
 	accountAssociationService := services.NewAccountAssociationService(userRepo, accountRepo, auditService, slog.Default())
 	customerLogger := services.NewCustomerLogger(slog.Default())
 
+	transferMonitorService := services.NewTransferMonitorService(
+		transferRepo,
+		accountService,
+		northwindClient,
+		webhookService,
+	)
+
 	processingCtx, cancelProcessing := context.WithCancel(context.Background())
 	defer cancelProcessing()
 
 	go processingService.StartProcessing(processingCtx)
 
 	e := configureEcho()
+
+	// Start background services
+	go func() {
+		ticker := time.NewTicker(30 * time.Second) // Check every 30 seconds
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				transferMonitorService.MonitorPendingTransfers(context.Background())
+			case <-processingCtx.Done():
+				return
+			}
+		}
+	}()
+	go func() {
+		ticker := time.NewTicker(15 * time.Second) // Check every 15 seconds
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				webhookService.ProcessPendingWebhooks(context.Background())
+			case <-processingCtx.Done():
+				return
+			}
+		}
+	}()
 
 	authHandler := handlers.NewAuthHandler(authService)
 	adminHandler := handlers.NewAdminHandler(userRepo, auditLogRepo)

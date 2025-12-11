@@ -300,12 +300,12 @@ func TestAccount_Activate(t *testing.T) {
 
 func TestAccount_Debit(t *testing.T) {
 	tests := []struct {
-		name           string
-		account        Account
-		amount         decimal.Decimal
+		name            string
+		account         Account
+		amount          decimal.Decimal
 		expectedBalance decimal.Decimal
-		wantErr        bool
-		errMsg         string
+		wantErr         bool
+		errMsg          string
 	}{
 		{
 			name: "successful debit",
@@ -395,12 +395,12 @@ func TestAccount_Debit(t *testing.T) {
 
 func TestAccount_Credit(t *testing.T) {
 	tests := []struct {
-		name           string
-		account        Account
-		amount         decimal.Decimal
+		name            string
+		account         Account
+		amount          decimal.Decimal
 		expectedBalance decimal.Decimal
-		wantErr        bool
-		errMsg         string
+		wantErr         bool
+		errMsg          string
 	}{
 		{
 			name: "successful credit",
@@ -551,28 +551,28 @@ func TestAccount_CanWithdraw(t *testing.T) {
 
 func TestGenerateAccountNumber(t *testing.T) {
 	tests := []struct {
-		name         string
-		accountType  string
+		name           string
+		accountType    string
 		expectedPrefix string
 	}{
 		{
-			name:         "checking account number",
-			accountType:  AccountTypeChecking,
+			name:           "checking account number",
+			accountType:    AccountTypeChecking,
 			expectedPrefix: CheckingPrefix,
 		},
 		{
-			name:         "savings account number",
-			accountType:  AccountTypeSavings,
+			name:           "savings account number",
+			accountType:    AccountTypeSavings,
 			expectedPrefix: SavingsPrefix,
 		},
 		{
-			name:         "money market account number",
-			accountType:  AccountTypeMoneyMarket,
+			name:           "money market account number",
+			accountType:    AccountTypeMoneyMarket,
 			expectedPrefix: MoneyMarketPrefix,
 		},
 		{
-			name:         "invalid account type returns empty",
-			accountType:  "invalid",
+			name:           "invalid account type returns empty",
+			accountType:    "invalid",
 			expectedPrefix: "",
 		},
 	}

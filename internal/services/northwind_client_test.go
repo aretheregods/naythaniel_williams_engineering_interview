@@ -201,4 +201,54 @@ func (s *NorthwindClientTestSuite) TestInitiateTransfer_Success() {
 	s.Equal(expectedTransferID, resp.ID)
 	s.Equal("processing", resp.Status)
 }
+
+func (s *NorthwindClientTestSuite) TestGetTransfer_Success() {
+	apiKey := "test-api-key"
+	transferID := "txn_123abc"
+	expectedStatus := "completed"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.Equal(http.MethodGet, r.Method)
+		s.Equal(fmt.Sprintf("/api/v1/transfers/%s", transferID), r.URL.Path)
+		s.Equal(apiKey, r.Header.Get("X-Api-Key"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(dto.NorthwindGetTransferResponse{
+			ID:     transferID,
+			Status: expectedStatus,
+		})
+	}))
+	defer server.Close()
+
+	client := &northwindClient{
+		httpClient: server.Client(),
+		apiKey:     apiKey,
+		baseURL:    server.URL + "/api/v1",
+	}
+
+	resp, err := client.GetTransfer(context.Background(), transferID)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal(transferID, resp.ID)
+	s.Equal(expectedStatus, resp.Status)
+}
+
+func (s *NorthwindClientTestSuite) TestGetTransfer_APIError() {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client := &northwindClient{
+		httpClient: server.Client(),
+		apiKey:     "any-key",
+		baseURL:    server.URL + "/api/v1",
+	}
+
+	resp, err := client.GetTransfer(context.Background(), "txn_not_found")
+	s.Error(err)
+	s.Nil(resp)
+	s.Contains(err.Error(), "northwind client: get transfer returned non-200 status: 404")
+}
 }

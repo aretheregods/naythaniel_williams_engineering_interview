@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/array/banking-api/internal/models"
 	"github.com/array/banking-api/internal/repositories"
 	"github.com/array/banking-api/internal/repositories/repository_mocks"
+	"github.com/array/banking-api/internal/services/service_mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -17,17 +19,20 @@ import (
 // AccountServiceSuite defines the test suite for AccountServiceInterface
 type AccountServiceSuite struct {
 	suite.Suite
-	ctrl            *gomock.Controller
-	accountRepo     *repository_mocks.MockAccountRepositoryInterface
-	transactionRepo *repository_mocks.MockTransactionRepositoryInterface
-	transferRepo    *repository_mocks.MockTransferRepositoryInterface
-	userRepo        *repository_mocks.MockUserRepositoryInterface
-	auditRepo       *repository_mocks.MockAuditLogRepositoryInterface
-	service         *accountService
-	testUser        *models.User
-	testUserID      uuid.UUID
-	testAccountID   uuid.UUID
-	testTime        time.Time
+	ctrl                *gomock.Controller
+	accountRepo         *repository_mocks.MockAccountRepositoryInterface
+	transactionRepo     *repository_mocks.MockTransactionRepositoryInterface
+	transferRepo        *repository_mocks.MockTransferRepositoryInterface
+	externalAccountRepo *repository_mocks.MockExternalAccountRepositoryInterface
+	northwindClient     *service_mocks.MockNorthwindClientInterface
+	webhookService      *service_mocks.MockWebhookServiceInterface
+	userRepo            *repository_mocks.MockUserRepositoryInterface
+	auditRepo           *repository_mocks.MockAuditLogRepositoryInterface
+	service             *accountService
+	testUser            *models.User
+	testUserID          uuid.UUID
+	testAccountID       uuid.UUID
+	testTime            time.Time
 }
 
 // SetupTest runs before each test in the suite
@@ -38,9 +43,15 @@ func (s *AccountServiceSuite) SetupTest() {
 	s.transactionRepo = repository_mocks.NewMockTransactionRepositoryInterface(s.ctrl)
 	s.userRepo = repository_mocks.NewMockUserRepositoryInterface(s.ctrl)
 	s.auditRepo = repository_mocks.NewMockAuditLogRepositoryInterface(s.ctrl)
+	s.externalAccountRepo = repository_mocks.NewMockExternalAccountRepositoryInterface(s.ctrl)
+	s.northwindClient = service_mocks.NewMockNorthwindClientInterface(s.ctrl)
+	s.webhookService = service_mocks.NewMockWebhookServiceInterface(s.ctrl)
 	s.service = NewAccountService(s.accountRepo,
 		s.transactionRepo,
 		s.transferRepo,
+		s.externalAccountRepo,
+		s.webhookService,
+		s.northwindClient,
 		s.userRepo,
 		s.auditRepo,
 		slog.Default()).(*accountService)
@@ -410,6 +421,9 @@ func (s *AccountServiceSuite) TestTransferBetweenAccounts_Success() {
 		Create(gomock.Any()).
 		Return(nil)
 
+	s.webhookService.EXPECT().
+		QueueTransferNotification(gomock.Any(), gomock.Any()).Return(nil)
+
 	_, err := s.service.TransferBetweenAccounts(fromAccountID, toAccountID, amount, "Transfer funds", idempotencyKey, s.testUserID)
 	s.NoError(err)
 }
@@ -523,4 +537,58 @@ func (s *AccountServiceSuite) TestCloseAccount_Unauthorized() {
 	err := s.service.CloseAccount(s.testAccountID, s.testUserID)
 	s.Error(err)
 	s.Equal(ErrUnauthorized, err)
+}
+
+func (s *AccountServiceSuite) TestHandleFailedExternalTransfer_Success() {
+	fromAccountID := uuid.New()
+	transferID := uuid.New()
+	amount := decimal.NewFromFloat(150.00)
+
+	transfer := &models.Transfer{
+		ID:            transferID,
+		FromAccountID: fromAccountID,
+		Amount:        amount,
+		Status:        models.TransferStatusPending,
+	}
+
+	fromAccount := &models.Account{
+		ID:     fromAccountID,
+		UserID: s.testUserID,
+	}
+
+	reversalTx := &models.Transaction{
+		ID: uuid.New(),
+	}
+
+	// Expect GetByID for the reversal process
+	s.accountRepo.EXPECT().GetByID(fromAccountID).Return(fromAccount, nil).Times(2)
+	// Expect balance update for the reversal
+	s.accountRepo.EXPECT().UpdateBalance(fromAccountID, amount, models.TransactionTypeCredit).Return(nil)
+	// Expect creation of the reversal transaction
+	s.transactionRepo.EXPECT().Create(gomock.Any()).DoAndReturn(func(tx *models.Transaction) error {
+		tx.ID = reversalTx.ID
+		return nil
+	})
+	// Expect audit log for the reversal transaction
+	s.auditRepo.EXPECT().Create(gomock.Any()).Return(nil)
+	// Expect the final update to the transfer record
+	s.transferRepo.EXPECT().Update(gomock.Any()).DoAndReturn(func(t *models.Transfer) error {
+		s.Equal(models.TransferStatusFailed, t.Status)
+		s.Equal(&reversalTx.ID, t.ReversalTransactionID)
+		s.NotNil(t.ErrorMessage)
+		return nil
+	})
+
+	// Expect webhook to be queued for the failed transfer
+	s.webhookService.EXPECT().QueueTransferNotification(gomock.Any(), gomock.Any()).Return(nil)
+
+	err := s.service.HandleFailedExternalTransfer(context.Background(), transfer, "API error")
+	s.NoError(err)
+}
+
+func (s *AccountServiceSuite) TestHandleFailedExternalTransfer_AlreadyFailed() {
+	transfer := &models.Transfer{ID: uuid.New(), Status: models.TransferStatusFailed}
+	// No mocks should be called as the function should return early
+	err := s.service.HandleFailedExternalTransfer(context.Background(), transfer, "API error")
+	s.NoError(err)
 }

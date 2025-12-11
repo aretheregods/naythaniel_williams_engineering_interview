@@ -126,14 +126,14 @@ func (s *AuthServiceTestSuite) TestLogin_SuccessfulLogin() {
 	userID := uuid.New()
 
 	user := &models.User{
-		ID:                   userID,
-		Email:                email,
-		PasswordHash:         "hashed_password",
-		FirstName:            "Test",
-		LastName:             "User",
-		Role:                 models.RoleCustomer,
-		FailedLoginAttempts:  0,
-		LockedAt:             nil,
+		ID:                  userID,
+		Email:               email,
+		PasswordHash:        "hashed_password",
+		FirstName:           "Test",
+		LastName:            "User",
+		Role:                models.RoleCustomer,
+		FailedLoginAttempts: 0,
+		LockedAt:            nil,
 	}
 
 	req := &dto.LoginRequest{
@@ -167,14 +167,14 @@ func (s *AuthServiceTestSuite) TestLogin_InvalidPassword() {
 	userID := uuid.New()
 
 	user := &models.User{
-		ID:                   userID,
-		Email:                email,
-		PasswordHash:         "hashed_password",
-		FirstName:            "Test",
-		LastName:             "User",
-		Role:                 models.RoleCustomer,
-		FailedLoginAttempts:  0,
-		LockedAt:             nil,
+		ID:                  userID,
+		Email:               email,
+		PasswordHash:        "hashed_password",
+		FirstName:           "Test",
+		LastName:            "User",
+		Role:                models.RoleCustomer,
+		FailedLoginAttempts: 0,
+		LockedAt:            nil,
 	}
 
 	req := &dto.LoginRequest{
@@ -217,14 +217,14 @@ func (s *AuthServiceTestSuite) TestLogin_AccountLockoutAfterFailedAttempts() {
 
 	// User starts with 2 failed attempts (will be locked on 3rd attempt)
 	user := &models.User{
-		ID:                   userID,
-		Email:                lockoutEmail,
-		PasswordHash:         "hashed_password",
-		FirstName:            "Lock",
-		LastName:             "Out",
-		Role:                 models.RoleCustomer,
-		FailedLoginAttempts:  2,
-		LockedAt:             nil,
+		ID:                  userID,
+		Email:               lockoutEmail,
+		PasswordHash:        "hashed_password",
+		FirstName:           "Lock",
+		LastName:            "Out",
+		Role:                models.RoleCustomer,
+		FailedLoginAttempts: 2,
+		LockedAt:            nil,
 	}
 
 	wrongReq := &dto.LoginRequest{
@@ -244,14 +244,14 @@ func (s *AuthServiceTestSuite) TestLogin_AccountLockoutAfterFailedAttempts() {
 	// Now try with correct password - should be locked
 	lockedTime := time.Now().Add(30 * time.Minute)
 	lockedUser := &models.User{
-		ID:                   userID,
-		Email:                lockoutEmail,
-		PasswordHash:         "hashed_password",
-		FirstName:            "Lock",
-		LastName:             "Out",
-		Role:                 models.RoleCustomer,
-		FailedLoginAttempts:  3,
-		LockedAt:             &lockedTime,
+		ID:                  userID,
+		Email:               lockoutEmail,
+		PasswordHash:        "hashed_password",
+		FirstName:           "Lock",
+		LastName:            "Out",
+		Role:                models.RoleCustomer,
+		FailedLoginAttempts: 3,
+		LockedAt:            &lockedTime,
 	}
 
 	correctReq := &dto.LoginRequest{

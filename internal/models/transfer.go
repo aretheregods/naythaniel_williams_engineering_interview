@@ -23,29 +23,31 @@ var (
 
 // Transfer represents an account-to-account transfer
 type Transfer struct {
-	ID                  uuid.UUID       `gorm:"type:uuid;primary_key" json:"id"`
-	FromAccountID       uuid.UUID       `gorm:"type:uuid;not null;index:idx_transfer_from_account" json:"from_account_id"`
-	ToAccountID         *uuid.UUID      `gorm:"type:uuid;index:idx_transfer_to_account" json:"to_account_id,omitempty"`
-	ToExternalAccountID *uuid.UUID      `gorm:"type:uuid;index" json:"to_external_account_id,omitempty"` // For transfers to external accounts
-	ExternalTransferID  *string         `gorm:"type:varchar(255);index" json:"external_transfer_id,omitempty"` // ID from the external provider (e.g., Northwind)
-	Amount              decimal.Decimal `gorm:"type:decimal(15,2);not null" json:"amount"`
-	Description         string          `gorm:"type:text;not null" json:"description"`
-	IdempotencyKey      string          `gorm:"type:varchar(255);uniqueIndex;not null" json:"idempotency_key"`
-	Status              string          `gorm:"type:varchar(20);not null;default:'pending';index:idx_transfer_status" json:"status"`
-	DebitTransactionID  *uuid.UUID      `gorm:"type:uuid;index" json:"debit_transaction_id,omitempty"`
-	CreditTransactionID *uuid.UUID      `gorm:"type:uuid;index" json:"credit_transaction_id,omitempty"`
-	ErrorMessage        *string         `gorm:"type:text" json:"error_message,omitempty"`
-	CreatedAt           time.Time       `gorm:"not null;index:idx_transfer_created_at" json:"created_at"`
-	UpdatedAt           time.Time       `gorm:"not null" json:"updated_at"`
-	CompletedAt         *time.Time      `json:"completed_at,omitempty"`
-	FailedAt            *time.Time      `json:"failed_at,omitempty"`
+	ID                    uuid.UUID       `gorm:"type:uuid;primary_key" json:"id"`
+	FromAccountID         uuid.UUID       `gorm:"type:uuid;not null;index:idx_transfer_from_account" json:"from_account_id"`
+	ToAccountID           *uuid.UUID      `gorm:"type:uuid;index:idx_transfer_to_account" json:"to_account_id,omitempty"`
+	ToExternalAccountID   *uuid.UUID      `gorm:"type:uuid;index" json:"to_external_account_id,omitempty"`       // For transfers to external accounts
+	ExternalTransferID    *string         `gorm:"type:varchar(255);index" json:"external_transfer_id,omitempty"` // ID from the external provider (e.g., Northwind)
+	Amount                decimal.Decimal `gorm:"type:decimal(15,2);not null" json:"amount"`
+	Description           string          `gorm:"type:text;not null" json:"description"`
+	IdempotencyKey        string          `gorm:"type:varchar(255);uniqueIndex;not null" json:"idempotency_key"`
+	Status                string          `gorm:"type:varchar(20);not null;default:'pending';index:idx_transfer_status" json:"status"`
+	DebitTransactionID    *uuid.UUID      `gorm:"type:uuid;index" json:"debit_transaction_id,omitempty"`
+	CreditTransactionID   *uuid.UUID      `gorm:"type:uuid;index" json:"credit_transaction_id,omitempty"`
+	ReversalTransactionID *uuid.UUID      `gorm:"type:uuid;index" json:"reversal_transaction_id,omitempty"` // For failed external transfers
+	ErrorMessage          *string         `gorm:"type:text" json:"error_message,omitempty"`
+	CreatedAt             time.Time       `gorm:"not null;index:idx_transfer_created_at" json:"created_at"`
+	UpdatedAt             time.Time       `gorm:"not null" json:"updated_at"`
+	CompletedAt           *time.Time      `json:"completed_at,omitempty"`
+	FailedAt              *time.Time      `json:"failed_at,omitempty"`
 
 	// Associations
-	FromAccount       Account      `gorm:"foreignKey:FromAccountID" json:"-"`
-	ToAccount         *Account     `gorm:"foreignKey:ToAccountID" json:"-"`
-	ToExternalAccount *ExternalAccount `gorm:"foreignKey:ToExternalAccountID" json:"-"`
-	DebitTransaction  *Transaction `gorm:"foreignKey:DebitTransactionID" json:"-"`
-	CreditTransaction *Transaction `gorm:"foreignKey:CreditTransactionID" json:"-"`
+	FromAccount         Account          `gorm:"foreignKey:FromAccountID" json:"-"`
+	ToAccount           *Account         `gorm:"foreignKey:ToAccountID" json:"-"`
+	ToExternalAccount   *ExternalAccount `gorm:"foreignKey:ToExternalAccountID" json:"-"`
+	DebitTransaction    *Transaction     `gorm:"foreignKey:DebitTransactionID" json:"-"`
+	CreditTransaction   *Transaction     `gorm:"foreignKey:CreditTransactionID" json:"-"`
+	ReversalTransaction *Transaction     `gorm:"foreignKey:ReversalTransactionID" json:"-"`
 }
 
 // BeforeCreate hook for Transfer

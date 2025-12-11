@@ -40,7 +40,7 @@ func SetupTestDB(t *testing.T) *DB {
 
 func CreateTestUser(t *testing.T, db *DB, email string) *models.User {
 	t.Helper()
-	
+
 	user := &models.User{
 		Email:        email,
 		PasswordHash: "hashed_password",
@@ -48,17 +48,17 @@ func CreateTestUser(t *testing.T, db *DB, email string) *models.User {
 		LastName:     "User",
 		Role:         models.RoleCustomer,
 	}
-	
+
 	if err := db.Create(user).Error; err != nil {
 		t.Fatalf("failed to create test user: %v", err)
 	}
-	
+
 	return user
 }
 
 func CreateTestAdminUser(t *testing.T, db *DB, email string) *models.User {
 	t.Helper()
-	
+
 	user := &models.User{
 		Email:        email,
 		PasswordHash: "hashed_password",
@@ -66,11 +66,11 @@ func CreateTestAdminUser(t *testing.T, db *DB, email string) *models.User {
 		LastName:     "User",
 		Role:         models.RoleAdmin,
 	}
-	
+
 	if err := db.Create(user).Error; err != nil {
 		t.Fatalf("failed to create test admin user: %v", err)
 	}
-	
+
 	return user
 }
 

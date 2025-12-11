@@ -318,3 +318,75 @@ func (s *TransferRepositoryTestSuite) TestCountByUserAccounts_NoAccounts() {
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), int64(0), count)
 }
+
+func (s *TransferRepositoryTestSuite) TestFindPendingExternal() {
+	// Helper to create accounts
+	user := &models.User{Email: gofakeit.Email(), FirstName: "a", LastName: "b", PasswordHash: "c", Role: "customer"}
+	s.db.Create(user)
+	fromAcct := &models.Account{UserID: user.ID, AccountNumber: gofakeit.Numerify("10########"), AccountType: "checking"}
+	s.db.Create(fromAcct)
+	toAcctInternal := &models.Account{UserID: user.ID, AccountNumber: gofakeit.Numerify("20########"), AccountType: "savings"}
+	s.db.Create(toAcctInternal)
+	toAcctExternal := &models.ExternalAccount{UserID: user.ID, ExternalAccountID: uuid.New(), Nickname: "ext", AccountNumberMask: "1234", NameOnAccount: "test", BankName: "nw"}
+	s.db.Create(toAcctExternal)
+
+	// 1. Pending external transfer (should be found)
+	extID1 := "nw_txn_1"
+	pendingExt := &models.Transfer{
+		FromAccountID:       fromAcct.ID,
+		ToExternalAccountID: &toAcctExternal.ID,
+		ExternalTransferID:  &extID1,
+		Amount:              decimal.NewFromInt(100),
+		Description:         "pending external",
+		IdempotencyKey:      uuid.New().String(),
+		Status:              models.TransferStatusPending,
+	}
+	s.NoError(s.repo.Create(pendingExt))
+
+	// 2. Processing external transfer (should be found)
+	extID2 := "nw_txn_2"
+	processingExt := &models.Transfer{
+		FromAccountID:       fromAcct.ID,
+		ToExternalAccountID: &toAcctExternal.ID,
+		ExternalTransferID:  &extID2,
+		Amount:              decimal.NewFromInt(100),
+		Description:         "processing external",
+		IdempotencyKey:      uuid.New().String(),
+		Status:              "processing", // Northwind status
+	}
+	s.NoError(s.repo.Create(processingExt))
+
+	// 3. Completed external transfer (should NOT be found)
+	completedExt := s.createTestTransfer()
+	completedExt.ToExternalAccountID = &toAcctExternal.ID
+	completedExt.Status = models.TransferStatusCompleted
+	s.NoError(s.repo.Create(completedExt))
+
+	// 4. Failed external transfer (should NOT be found)
+	failedExt := s.createTestTransfer()
+	failedExt.ToExternalAccountID = &toAcctExternal.ID
+	failedExt.Status = models.TransferStatusFailed
+	s.NoError(s.repo.Create(failedExt))
+
+	// 5. Pending internal transfer (should NOT be found)
+	pendingInt := s.createTestTransfer()
+	pendingInt.ToAccountID = &toAcctInternal.ID
+	pendingInt.Status = models.TransferStatusPending
+	s.NoError(s.repo.Create(pendingInt))
+
+	// Execute the method
+	results, err := s.repo.FindPendingExternal(10)
+	s.NoError(err)
+	s.Len(results, 2)
+
+	// Verify the correct transfers are returned
+	foundIDs := make(map[uuid.UUID]bool)
+	for _, t := range results {
+		foundIDs[t.ID] = true
+	}
+	s.True(foundIDs[pendingExt.ID])
+	s.True(foundIDs[processingExt.ID])
+	s.False(foundIDs[completedExt.ID])
+	s.False(foundIDs[failedExt.ID])
+	s.False(foundIDs[pendingInt.ID])
+}

@@ -125,4 +125,33 @@ func (c *northwindClient) InitiateTransfer(ctx context.Context, req *dto.Northwi
 
 	return &response, nil
 }
+
+// GetTransfer retrieves the status and details of a specific transfer from the Northwind API.
+func (c *northwindClient) GetTransfer(ctx context.Context, transferID string) (*dto.NorthwindGetTransferResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/transfers/%s", c.baseURL, transferID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("northwind client: failed to create get transfer request: %w", err)
+	}
+
+	req.Header.Set("X-Api-Key", c.apiKey)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("northwind client: get transfer request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("northwind client: get transfer returned non-200 status: %d", resp.StatusCode)
+	}
+
+	var response dto.NorthwindGetTransferResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("northwind client: failed to decode get transfer response: %w", err)
+	}
+
+	return &response, nil
+}
+}
 }

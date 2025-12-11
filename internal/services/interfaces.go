@@ -29,6 +29,7 @@ type AccountServiceInterface interface {
 	CloseAccount(accountID uuid.UUID, userID uuid.UUID) error
 	PerformTransaction(accountID uuid.UUID, amount decimal.Decimal, transactionType, description string, userID *uuid.UUID) (*models.Transaction, error)
 	TransferBetweenAccounts(fromAccountID, toAccountID uuid.UUID, amount decimal.Decimal, description, idempotencyKey string, userID uuid.UUID) (*models.Transfer, error)
+	HandleFailedExternalTransfer(ctx context.Context, transfer *models.Transfer, reason string) error
 	InitiateExternalTransfer(ctx context.Context, userID, fromAccountID, toExternalAccountID uuid.UUID, amount decimal.Decimal, description, transferType, idempotencyKey string) (*models.Transfer, error)
 	GetAccountTransactions(accountID uuid.UUID, userID *uuid.UUID, offset, limit int) ([]models.Transaction, int64, error)
 	GetRecentTransactions(accountID uuid.UUID, userID *uuid.UUID, limit int) ([]models.Transaction, error)
@@ -214,10 +215,32 @@ type NorthwindClientInterface interface {
 	CreateExternalAccount(ctx context.Context, details *dto.NorthwindCreateAccountRequest) (*dto.NorthwindExternalAccountResponse, error)
 	// InitiateTransfer starts a new transfer with the Northwind API.
 	InitiateTransfer(ctx context.Context, req *dto.NorthwindInitiateTransferRequest) (*dto.NorthwindInitiateTransferResponse, error)
+	// GetTransfer retrieves the status of a specific transfer from the Northwind API.
+	GetTransfer(ctx context.Context, transferID string) (*dto.NorthwindGetTransferResponse, error)
 }
 
 // ExternalAccountServiceInterface defines the contract for managing external accounts (payees).
 type ExternalAccountServiceInterface interface {
 	// Register creates a new external account by calling the Northwind API and saving it locally.
 	Register(ctx context.Context, userID uuid.UUID, req *dto.RegisterExternalAccountRequest) (*models.ExternalAccount, error)
+}
+
+// TransferMonitorServiceInterface defines the contract for monitoring external transfers.
+type TransferMonitorServiceInterface interface {
+	// MonitorPendingTransfers checks the status of pending external transfers and updates them.
+	MonitorPendingTransfers(ctx context.Context)
+}
+
+// RegulatorClientInterface defines the contract for sending notifications to the regulator.
+type RegulatorClientInterface interface {
+	// SendTransferNotification sends a webhook notification about a transfer's final status.
+	SendTransferNotification(ctx context.Context, payload *dto.RegulatorNotificationPayload) error
+}
+
+// WebhookServiceInterface defines the contract for managing and sending webhooks.
+type WebhookServiceInterface interface {
+	// QueueTransferNotification creates a database record to send a webhook for a transfer.
+	QueueTransferNotification(ctx context.Context, transfer *models.Transfer) error
+	// ProcessPendingWebhooks fetches and sends pending webhooks.
+	ProcessPendingWebhooks(ctx context.Context)
 }

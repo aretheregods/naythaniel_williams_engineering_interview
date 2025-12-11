@@ -29,7 +29,7 @@ func NewCustomerLogger(logger *slog.Logger) CustomerLoggerInterface {
 func (cl *CustomerLogger) LogCustomerSearchStarted(ctx context.Context, query string, searchType string, adminUserID uuid.UUID) {
 	cl.logger.InfoContext(ctx, "customer search started",
 		slog.String("event_type", "customer_search_started"),
-		slog.String("query", RedactedValue),  // Mask query to avoid logging PII
+		slog.String("query", RedactedValue), // Mask query to avoid logging PII
 		slog.String("search_type", searchType),
 		slog.String("admin_user_id", adminUserID.String()),
 		slog.Time("timestamp", time.Now()),
@@ -188,4 +188,3 @@ func getRequestID(ctx context.Context) string {
 	}
 	return ""
 }
-

@@ -59,6 +59,7 @@ func (db *DB) AutoMigrate() error {
 		&models.Transaction{},
 		&models.Transfer{},
 		&models.ExternalAccount{},
+		&models.WebhookNotification{},
 		&models.ProcessingQueueItem{},
 	)
 }

@@ -21,6 +21,7 @@ type Config struct {
 	JWT       JWTConfig
 	Security  SecurityConfig
 	Northwind NorthwindConfig
+	Regulator RegulatorConfig
 }
 
 type ServerConfig struct {
@@ -67,6 +68,11 @@ type NorthwindConfig struct {
 	APIKey string
 }
 
+type RegulatorConfig struct {
+	WebhookURL    string
+	WebhookAPIKey string
+}
+
 func Load() *Config {
 	config := &Config{
 		Server: ServerConfig{
@@ -104,6 +110,10 @@ func Load() *Config {
 		},
 		Northwind: NorthwindConfig{
 			APIKey: getEnv("NORTHWIND_API_KEY", ""),
+		},
+		Regulator: RegulatorConfig{
+			WebhookURL:    getEnv("REGULATOR_WEBHOOK_URL", ""),
+			WebhookAPIKey: getEnv("REGULATOR_WEBHOOK_API_KEY", ""),
 		},
 	}
 
