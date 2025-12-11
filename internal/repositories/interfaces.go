@@ -143,5 +143,6 @@ type BlacklistedTokenRepositoryInterface interface {
 // ExternalAccountRepositoryInterface defines the contract for external account repository operations.
 type ExternalAccountRepositoryInterface interface {
 	Create(account *models.ExternalAccount) error
+	GetByID(id uuid.UUID) (*models.ExternalAccount, error)
 	ListByUserID(userID uuid.UUID) ([]models.ExternalAccount, error)
 }
