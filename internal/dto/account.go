@@ -32,6 +32,14 @@ type TransferRequest struct {
 	Description string `json:"description" validate:"required,min=1,max=255"`
 }
 
+// InitiateExternalTransferRequest represents the request to transfer funds to an external account.
+type InitiateExternalTransferRequest struct {
+	ToExternalAccountID string `json:"to_external_account_id" validate:"required,uuid"`
+	Amount              string `json:"amount" validate:"required"`
+	Description         string `json:"description" validate:"required,min=1,max=255"`
+	TransferType        string `json:"transfer_type" validate:"required,oneof=standard express"`
+}
+
 // Account Response DTOs
 
 // CreateAccountResponse represents the response after creating an account
