@@ -29,6 +29,7 @@ type AccountServiceInterface interface {
 	CloseAccount(accountID uuid.UUID, userID uuid.UUID) error
 	PerformTransaction(accountID uuid.UUID, amount decimal.Decimal, transactionType, description string, userID *uuid.UUID) (*models.Transaction, error)
 	TransferBetweenAccounts(fromAccountID, toAccountID uuid.UUID, amount decimal.Decimal, description, idempotencyKey string, userID uuid.UUID) (*models.Transfer, error)
+	InitiateExternalTransfer(ctx context.Context, userID, fromAccountID, toExternalAccountID uuid.UUID, amount decimal.Decimal, description, transferType, idempotencyKey string) (*models.Transfer, error)
 	GetAccountTransactions(accountID uuid.UUID, userID *uuid.UUID, offset, limit int) ([]models.Transaction, int64, error)
 	GetRecentTransactions(accountID uuid.UUID, userID *uuid.UUID, limit int) ([]models.Transaction, error)
 	GetUserTransfers(userID uuid.UUID, filters models.TransferFilters, offset, limit int) ([]models.Transfer, int64, error)
@@ -211,6 +212,8 @@ type NorthwindClientInterface interface {
 	HealthCheck(ctx context.Context) error
 	// CreateExternalAccount registers a new external account with the Northwind API.
 	CreateExternalAccount(ctx context.Context, details *dto.NorthwindCreateAccountRequest) (*dto.NorthwindExternalAccountResponse, error)
+	// InitiateTransfer starts a new transfer with the Northwind API.
+	InitiateTransfer(ctx context.Context, req *dto.NorthwindInitiateTransferRequest) (*dto.NorthwindInitiateTransferResponse, error)
 }
 
 // ExternalAccountServiceInterface defines the contract for managing external accounts (payees).
