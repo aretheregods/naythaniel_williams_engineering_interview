@@ -73,11 +73,15 @@ func main() {
 	auditService := services.NewAuditService(auditLogRepo)
 	passwordService := services.NewPasswordService(userRepo, auditService)
 	tokenService := services.NewTokenService(&cfg.JWT)
+	// Initialize Northwind Client
+	northwindClient := services.NewNorthwindClient(cfg.Northwind.APIKey)
 
 	accountService := services.NewAccountService(
 		accountRepo,
 		transactionRepo,
 		transferRepo,
+		externalAccountRepo,
+		northwindClient,
 		userRepo,
 		auditLogRepo,
 		slog.Default(),
@@ -118,9 +122,6 @@ func main() {
 	externalAccountService := services.NewExternalAccountService(externalAccountRepo, northwindClient)
 	accountAssociationService := services.NewAccountAssociationService(userRepo, accountRepo, auditService, slog.Default())
 	customerLogger := services.NewCustomerLogger(slog.Default())
-
-	// Initialize Northwind Client
-	northwindClient := services.NewNorthwindClient(cfg.Northwind.APIKey)
 
 	processingCtx, cancelProcessing := context.WithCancel(context.Background())
 	defer cancelProcessing()
@@ -209,6 +210,7 @@ func addAccountEndpoints(api *echo.Group, tokenService *services.TokenService, b
 	accountGroup.GET("/:accountId/transactions", transactionHandler.ListTransactions)
 	accountGroup.GET("/:accountId/transactions/:id", transactionHandler.GetTransaction)
 	accountGroup.POST("/:accountId/transfer", accountHandler.Transfer)
+	accountGroup.POST("/:accountId/external-transfer", accountHandler.InitiateExternalTransfer)
 	accountGroup.POST("/external", accountHandler.RegisterExternalAccount)
 
 	// Summary endpoints
