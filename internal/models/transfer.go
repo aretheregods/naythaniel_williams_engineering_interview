@@ -25,7 +25,9 @@ var (
 type Transfer struct {
 	ID                  uuid.UUID       `gorm:"type:uuid;primary_key" json:"id"`
 	FromAccountID       uuid.UUID       `gorm:"type:uuid;not null;index:idx_transfer_from_account" json:"from_account_id"`
-	ToAccountID         uuid.UUID       `gorm:"type:uuid;not null;index:idx_transfer_to_account" json:"to_account_id"`
+	ToAccountID         *uuid.UUID      `gorm:"type:uuid;index:idx_transfer_to_account" json:"to_account_id,omitempty"`
+	ToExternalAccountID *uuid.UUID      `gorm:"type:uuid;index" json:"to_external_account_id,omitempty"` // For transfers to external accounts
+	ExternalTransferID  *string         `gorm:"type:varchar(255);index" json:"external_transfer_id,omitempty"` // ID from the external provider (e.g., Northwind)
 	Amount              decimal.Decimal `gorm:"type:decimal(15,2);not null" json:"amount"`
 	Description         string          `gorm:"type:text;not null" json:"description"`
 	IdempotencyKey      string          `gorm:"type:varchar(255);uniqueIndex;not null" json:"idempotency_key"`
@@ -40,7 +42,8 @@ type Transfer struct {
 
 	// Associations
 	FromAccount       Account      `gorm:"foreignKey:FromAccountID" json:"-"`
-	ToAccount         Account      `gorm:"foreignKey:ToAccountID" json:"-"`
+	ToAccount         *Account     `gorm:"foreignKey:ToAccountID" json:"-"`
+	ToExternalAccount *ExternalAccount `gorm:"foreignKey:ToExternalAccountID" json:"-"`
 	DebitTransaction  *Transaction `gorm:"foreignKey:DebitTransactionID" json:"-"`
 	CreditTransaction *Transaction `gorm:"foreignKey:CreditTransactionID" json:"-"`
 }
@@ -78,11 +81,15 @@ func (t *Transfer) Validate() error {
 		return errors.New("from account ID is required")
 	}
 
-	if t.ToAccountID == uuid.Nil {
-		return errors.New("to account ID is required")
+	if t.ToAccountID == nil && t.ToExternalAccountID == nil {
+		return errors.New("either to_account_id or to_external_account_id is required")
 	}
 
-	if t.FromAccountID == t.ToAccountID {
+	if t.ToAccountID != nil && t.ToExternalAccountID != nil {
+		return errors.New("cannot specify both to_account_id and to_external_account_id")
+	}
+
+	if t.ToAccountID != nil && t.FromAccountID == *t.ToAccountID {
 		return errors.New("from and to accounts cannot be the same")
 	}
 
