@@ -17,17 +17,19 @@ import (
 
 // AccountHandler handles account-related HTTP requests
 type AccountHandler struct {
-	accountService   services.AccountServiceInterface
-	auditLogger      services.AuditLoggerInterface
-	metricsCollector services.MetricsRecorderInterface
+	accountService         services.AccountServiceInterface
+	externalAccountService services.ExternalAccountServiceInterface
+	auditLogger            services.AuditLoggerInterface
+	metricsCollector       services.MetricsRecorderInterface
 }
 
 // NewAccountHandler creates a new account handler
-func NewAccountHandler(accountService services.AccountServiceInterface, auditLogger services.AuditLoggerInterface, metricsCollector services.MetricsRecorderInterface) *AccountHandler {
+func NewAccountHandler(accountService services.AccountServiceInterface, externalAccountService services.ExternalAccountServiceInterface, auditLogger services.AuditLoggerInterface, metricsCollector services.MetricsRecorderInterface) *AccountHandler {
 	return &AccountHandler{
-		accountService:   accountService,
-		auditLogger:      auditLogger,
-		metricsCollector: metricsCollector,
+		accountService:         accountService,
+		externalAccountService: externalAccountService,
+		auditLogger:            auditLogger,
+		metricsCollector:       metricsCollector,
 	}
 }
 
@@ -626,4 +628,52 @@ func (h *AccountHandler) mapTransferErr(c echo.Context, ctx context.Context, tra
 	}
 
 	return SendSystemError(c, svcErr)
+}
+
+// RegisterExternalAccount registers a new external account (payee) for transfers.
+// @Summary Register an external account
+// @Description Add a new Northwind Bank account as a payee for future transfers.
+// @Tags Accounts
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body dto.RegisterExternalAccountRequest true "External account details"
+// @Success 201 {object} dto.ExternalAccountResponse "External account registered successfully"
+// @Failure 400 {object} errors.ErrorResponse "VALIDATION_001 - Invalid request body or validation error"
+// @Failure 401 {object} errors.ErrorResponse "AUTH_002 - Missing or invalid authentication"
+// @Failure 500 {object} errors.ErrorResponse "SYSTEM_001 - Internal server error"
+// @Failure 503 {object} errors.ErrorResponse "SYSTEM_003 - Northwind API unavailable"
+// @Router /accounts/external [post]
+func (h *AccountHandler) RegisterExternalAccount(c echo.Context) error {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		return SendError(c, errors.AuthMissingToken)
+	}
+
+	var req dto.RegisterExternalAccountRequest
+	if err := c.Bind(&req); err != nil {
+		return SendError(c, errors.ValidationGeneral, errors.WithDetails("Invalid request body"))
+	}
+
+	if err := c.Validate(req); err != nil {
+		return SendError(c, errors.ValidationGeneral, errors.WithDetails(err.Error()))
+	}
+
+	account, err := h.externalAccountService.Register(c.Request().Context(), userID, &req)
+	if err != nil {
+		if errors.Is(err, services.ErrRegistrationFailed) {
+			return SendError(c, errors.SystemServiceUnavailable, errors.WithDetails("Could not connect to Northwind Bank."))
+		}
+		return SendSystemError(c, err)
+	}
+
+	response := &dto.ExternalAccountResponse{
+		ID:                account.ID,
+		Nickname:          account.Nickname,
+		AccountNumberMask: account.AccountNumberMask,
+		NameOnAccount:     account.NameOnAccount,
+		BankName:          account.BankName,
+	}
+
+	return c.JSON(http.StatusCreated, response)
 }

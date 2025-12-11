@@ -22,23 +22,25 @@ import (
 // AccountHandlerSuite defines the test suite for AccountHandler
 type AccountHandlerSuite struct {
 	suite.Suite
-	ctrl             *gomock.Controller
-	mockService      *service_mocks.MockAccountServiceInterface
-	handler          *AccountHandler
-	echo             *echo.Echo
-	testUserID       uuid.UUID
-	testAdminID      uuid.UUID
-	auditLogger      *service_mocks.MockAuditLoggerInterface
-	metricsCollector *service_mocks.MockMetricsRecorderInterface
+	ctrl                   *gomock.Controller
+	mockAccountService     *service_mocks.MockAccountServiceInterface
+	mockExternalAccountSvc *service_mocks.MockExternalAccountServiceInterface
+	handler                *AccountHandler
+	echo                   *echo.Echo
+	testUserID             uuid.UUID
+	testAdminID            uuid.UUID
+	auditLogger            *service_mocks.MockAuditLoggerInterface
+	metricsCollector       *service_mocks.MockMetricsRecorderInterface
 }
 
 // SetupTest runs before each test in the suite
 func (s *AccountHandlerSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-	s.mockService = service_mocks.NewMockAccountServiceInterface(s.ctrl)
+	s.mockAccountService = service_mocks.NewMockAccountServiceInterface(s.ctrl)
+	s.mockExternalAccountSvc = service_mocks.NewMockExternalAccountServiceInterface(s.ctrl)
 	s.auditLogger = service_mocks.NewMockAuditLoggerInterface(s.ctrl)
 	s.metricsCollector = service_mocks.NewMockMetricsRecorderInterface(s.ctrl)
-	s.handler = NewAccountHandler(s.mockService, s.auditLogger, s.metricsCollector)
+	s.handler = NewAccountHandler(s.mockAccountService, s.mockExternalAccountSvc, s.auditLogger, s.metricsCollector)
 
 	s.echo = echo.New()
 	s.echo.Validator = &CustomValidator{validator: validator.New()}
@@ -96,7 +98,7 @@ func (s *AccountHandlerSuite) TestCreateAccount_WithInitialDeposit() {
 		Status:        "active",
 	}
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		CreateAccount(s.testUserID, "checking", gomock.Any()).
 		DoAndReturn(func(_ uuid.UUID, _ string, amount decimal.Decimal) (*models.Account, error) {
 			if !amount.Equal(decimal.NewFromFloat(100.00)) {
@@ -139,7 +141,7 @@ func (s *AccountHandlerSuite) TestCreateAccount_AccountAlreadyExists() {
 		AccountType: "checking",
 	}
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		CreateAccount(s.testUserID, "checking", decimal.Zero).
 		Return(nil, services.ErrAccountAlreadyExists)
 
@@ -162,7 +164,7 @@ func (s *AccountHandlerSuite) TestGetAccount_Success() {
 		Status:        "active",
 	}
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetAccountByID(accountID, &s.testUserID).
 		Return(expectedAccount, nil)
 
@@ -183,7 +185,7 @@ func (s *AccountHandlerSuite) TestGetAccount_Success() {
 func (s *AccountHandlerSuite) TestGetAccount_NotFound() {
 	accountID := uuid.New()
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetAccountByID(accountID, &s.testUserID).
 		Return(nil, services.ErrAccountNotFound)
 
@@ -199,7 +201,7 @@ func (s *AccountHandlerSuite) TestGetAccount_NotFound() {
 func (s *AccountHandlerSuite) TestGetAccount_Unauthorized() {
 	accountID := uuid.New()
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetAccountByID(accountID, &s.testUserID).
 		Return(nil, services.ErrUnauthorized)
 
@@ -233,7 +235,7 @@ func (s *AccountHandlerSuite) TestGetUserAccounts_Success() {
 		},
 	}
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetUserAccounts(s.testUserID).
 		Return(expectedAccounts, nil)
 
@@ -269,7 +271,7 @@ func (s *AccountHandlerSuite) TestPerformTransaction_Credit() {
 		Status:          "completed",
 	}
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		PerformTransaction(accountID, gomock.Any(), "credit", "Deposit", &s.testUserID).
 		DoAndReturn(func(_ uuid.UUID, amount decimal.Decimal, _ string, _ string, _ *uuid.UUID) (*models.Transaction, error) {
 			if !amount.Equal(decimal.NewFromFloat(50.00)) {
@@ -301,7 +303,7 @@ func (s *AccountHandlerSuite) TestPerformTransaction_InsufficientFunds() {
 		Description: "Withdrawal",
 	}
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		PerformTransaction(accountID, gomock.Any(), "debit", "Withdrawal", &s.testUserID).
 		DoAndReturn(func(_ uuid.UUID, amount decimal.Decimal, _ string, _ string, _ *uuid.UUID) (*models.Transaction, error) {
 			if !amount.Equal(decimal.NewFromFloat(1000.00)) {
@@ -346,7 +348,7 @@ func (s *AccountHandlerSuite) TestTransfer_Success() {
 		Times(1)
 
 	// Expect service call
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		TransferBetweenAccounts(fromAccountID, toAccountID, gomock.Any(), "Transfer to savings", idempotencyKey, s.testUserID).
 		DoAndReturn(func(_ uuid.UUID, _ uuid.UUID, amount decimal.Decimal, _ string, _ string, _ uuid.UUID) (*models.Transfer, error) {
 			if !amount.Equal(decimal.NewFromFloat(100.00)) {
@@ -408,7 +410,7 @@ func (s *AccountHandlerSuite) TestTransfer_SameAccount() {
 		Times(1)
 
 	// Expect service call that returns error
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		TransferBetweenAccounts(fromAccountID, fromAccountID, gomock.Any(), "Transfer", idempotencyKey, s.testUserID).
 		DoAndReturn(func(_ uuid.UUID, _ uuid.UUID, amount decimal.Decimal, _ string, _ string, _ uuid.UUID) (*models.Transfer, error) {
 			if !amount.Equal(decimal.NewFromFloat(100.00)) {
@@ -478,7 +480,7 @@ func (s *AccountHandlerSuite) TestTransfer_WithIdempotencyKey_Success() {
 		Times(1)
 
 	// Expect service call
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		TransferBetweenAccounts(fromAccountID, toAccountID, gomock.Any(), "Payment with idempotency", idempotencyKey, s.testUserID).
 		DoAndReturn(func(_ uuid.UUID, _ uuid.UUID, amount decimal.Decimal, _ string, _ string, _ uuid.UUID) (*models.Transfer, error) {
 			if !amount.Equal(decimal.NewFromFloat(150.00)) {
@@ -564,7 +566,7 @@ func (s *AccountHandlerSuite) TestTransfer_DuplicateIdempotencyKey_CompletedTran
 		Times(1)
 
 	// Expect service call that returns existing completed transfer
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		TransferBetweenAccounts(fromAccountID, toAccountID, gomock.Any(), "Duplicate request", idempotencyKey, s.testUserID).
 		Return(existingTransfer, nil)
 
@@ -618,7 +620,7 @@ func (s *AccountHandlerSuite) TestTransfer_DuplicateIdempotencyKey_PendingTransf
 		Times(1)
 
 	// Expect service call that returns pending error
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		TransferBetweenAccounts(fromAccountID, toAccountID, gomock.Any(), "Pending duplicate", idempotencyKey, s.testUserID).
 		Return(nil, services.ErrTransferPending)
 
@@ -668,7 +670,7 @@ func (s *AccountHandlerSuite) TestTransfer_DuplicateIdempotencyKey_FailedTransfe
 		Times(1)
 
 	// Expect service call that returns failed error
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		TransferBetweenAccounts(fromAccountID, toAccountID, gomock.Any(), "Failed duplicate", idempotencyKey, s.testUserID).
 		Return(nil, services.ErrTransferFailed)
 
@@ -748,7 +750,7 @@ func (s *AccountHandlerSuite) TestGetTransferHistory_Success() {
 	}
 
 	filters := models.TransferFilters{}
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetUserTransfers(s.testUserID, filters, 0, 20).
 		Return(expectedTransfers, int64(2), nil)
 
@@ -783,7 +785,7 @@ func (s *AccountHandlerSuite) TestGetTransferHistory_WithStatusFilter() {
 	}
 
 	filters := models.TransferFilters{Status: models.TransferStatusCompleted}
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetUserTransfers(s.testUserID, filters, 0, 20).
 		Return(expectedTransfers, int64(1), nil)
 
@@ -814,7 +816,7 @@ func (s *AccountHandlerSuite) TestGetAllAccounts_AdminSuccess() {
 	}
 
 	filters := models.AccountFilters{}
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetAllAccounts(filters, 0, 20).
 		Return(expectedAccounts, int64(1), nil)
 
@@ -837,7 +839,7 @@ func (s *AccountHandlerSuite) TestGetAllAccounts_NonAdminFails() {
 	c, _ := s.createContextWithAuth("GET", "/admin/accounts", nil, s.testUserID, "user")
 
 	// Mock service call since handler will proceed without middleware protection
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetAllAccounts(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return([]models.Account{}, int64(0), nil)
 
@@ -858,7 +860,7 @@ func (s *AccountHandlerSuite) TestGetAccountByIDAdmin_Success() {
 	}
 
 	var nilUserID *uuid.UUID
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetAccountByID(accountID, nilUserID).
 		Return(expectedAccount, nil)
 
@@ -889,7 +891,7 @@ func (s *AccountHandlerSuite) TestGetUserAccountsAdmin_Success() {
 		},
 	}
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		GetUserAccounts(userID).
 		Return(expectedAccounts, nil)
 
@@ -911,7 +913,7 @@ func (s *AccountHandlerSuite) TestGetUserAccountsAdmin_Success() {
 func (s *AccountHandlerSuite) TestCloseAccount_Success() {
 	accountID := uuid.New()
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		CloseAccount(accountID, s.testUserID).
 		Return(nil)
 
@@ -927,7 +929,7 @@ func (s *AccountHandlerSuite) TestCloseAccount_Success() {
 func (s *AccountHandlerSuite) TestCloseAccount_NonZeroBalance() {
 	accountID := uuid.New()
 
-	s.mockService.EXPECT().
+	s.mockAccountService.EXPECT().
 		CloseAccount(accountID, s.testUserID).
 		Return(services.ErrAccountClosureNotAllowed)
 
@@ -938,4 +940,73 @@ func (s *AccountHandlerSuite) TestCloseAccount_NonZeroBalance() {
 	err := s.handler.CloseAccount(c)
 	s.NoError(err)                                    // Handler returns nil, error is written to response
 	s.Equal(http.StatusUnprocessableEntity, rec.Code) // AccountOperationNotPermitted returns 422
+}
+
+func (s *AccountHandlerSuite) TestRegisterExternalAccount_Success() {
+	reqBody := dto.RegisterExternalAccountRequest{
+		BankName:      "Northwind Bank",
+		Nickname:      "Northwind Savings",
+		AccountNumber: "9876543210",
+		RoutingNumber: "123123123",
+		NameOnAccount: "Jane Doe",
+	}
+
+	expectedAccount := &models.ExternalAccount{
+		ID:                uuid.New(),
+		UserID:            s.testUserID,
+		Nickname:          reqBody.Nickname,
+		AccountNumberMask: "3210",
+		NameOnAccount:     reqBody.NameOnAccount,
+		BankName:          reqBody.BankName,
+	}
+
+	s.mockExternalAccountSvc.EXPECT().
+		Register(gomock.Any(), s.testUserID, &reqBody).
+		Return(expectedAccount, nil)
+
+	c, rec := s.createContextWithAuth("POST", "/accounts/external", reqBody, s.testUserID, "user")
+
+	err := s.handler.RegisterExternalAccount(c)
+	s.NoError(err)
+	s.Equal(http.StatusCreated, rec.Code)
+
+	var resp dto.ExternalAccountResponse
+	err = json.Unmarshal(rec.Body.Bytes(), &resp)
+	s.NoError(err)
+	s.Equal(expectedAccount.ID, resp.ID)
+	s.Equal(expectedAccount.Nickname, resp.Nickname)
+	s.Equal("3210", resp.AccountNumberMask)
+}
+
+func (s *AccountHandlerSuite) TestRegisterExternalAccount_ValidationFailure() {
+	reqBody := dto.RegisterExternalAccountRequest{
+		Nickname: "Short", // Other fields missing
+	}
+
+	c, rec := s.createContextWithAuth("POST", "/accounts/external", reqBody, s.testUserID, "user")
+
+	err := s.handler.RegisterExternalAccount(c)
+	s.NoError(err)
+	s.Equal(http.StatusBadRequest, rec.Code)
+}
+
+func (s *AccountHandlerSuite) TestRegisterExternalAccount_NorthwindFailure() {
+	reqBody := dto.RegisterExternalAccountRequest{
+		BankName:      "Northwind Bank",
+		Nickname:      "Northwind Savings",
+		AccountNumber: "9876543210",
+		RoutingNumber: "123123123",
+		NameOnAccount: "Jane Doe",
+	}
+
+	s.mockExternalAccountSvc.EXPECT().
+		Register(gomock.Any(), s.testUserID, &reqBody).
+		Return(nil, services.ErrRegistrationFailed)
+
+	c, rec := s.createContextWithAuth("POST", "/accounts/external", reqBody, s.testUserID, "user")
+
+	err := s.handler.RegisterExternalAccount(c)
+	s.NoError(err)
+	s.Equal(http.StatusServiceUnavailable, rec.Code)
+	s.Contains(rec.Body.String(), "Could not connect to Northwind Bank")
 }
