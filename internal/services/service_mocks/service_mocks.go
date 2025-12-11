@@ -257,6 +257,21 @@ func (mr *MockAccountServiceInterfaceMockRecorder) GetUserTransfers(userID, filt
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserTransfers", reflect.TypeOf((*MockAccountServiceInterface)(nil).GetUserTransfers), userID, filters, offset, limit)
 }
 
+// InitiateExternalTransfer mocks base method.
+func (m *MockAccountServiceInterface) InitiateExternalTransfer(ctx context.Context, userID, fromAccountID, toExternalAccountID uuid.UUID, amount decimal.Decimal, description, transferType, idempotencyKey string) (*models.Transfer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InitiateExternalTransfer", ctx, userID, fromAccountID, toExternalAccountID, amount, description, transferType, idempotencyKey)
+	ret0, _ := ret[0].(*models.Transfer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InitiateExternalTransfer indicates an expected call of InitiateExternalTransfer.
+func (mr *MockAccountServiceInterfaceMockRecorder) InitiateExternalTransfer(ctx, userID, fromAccountID, toExternalAccountID, amount, description, transferType, idempotencyKey interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitiateExternalTransfer", reflect.TypeOf((*MockAccountServiceInterface)(nil).InitiateExternalTransfer), ctx, userID, fromAccountID, toExternalAccountID, amount, description, transferType, idempotencyKey)
+}
+
 // PerformTransaction mocks base method.
 func (m *MockAccountServiceInterface) PerformTransaction(accountID uuid.UUID, amount decimal.Decimal, transactionType, description string, userID *uuid.UUID) (*models.Transaction, error) {
 	m.ctrl.T.Helper()

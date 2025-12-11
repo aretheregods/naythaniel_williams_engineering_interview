@@ -49,6 +49,21 @@ func (mr *MockExternalAccountRepositoryInterfaceMockRecorder) Create(account int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockExternalAccountRepositoryInterface)(nil).Create), account)
 }
 
+// GetByID mocks base method.
+func (m *MockExternalAccountRepositoryInterface) GetByID(id uuid.UUID) (*models.ExternalAccount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", id)
+	ret0, _ := ret[0].(*models.ExternalAccount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockExternalAccountRepositoryInterfaceMockRecorder) GetByID(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockExternalAccountRepositoryInterface)(nil).GetByID), id)
+}
+
 // ListByUserID mocks base method.
 func (m *MockExternalAccountRepositoryInterface) ListByUserID(userID uuid.UUID) ([]models.ExternalAccount, error) {
 	m.ctrl.T.Helper()

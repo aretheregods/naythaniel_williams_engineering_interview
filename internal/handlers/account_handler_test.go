@@ -1010,3 +1010,93 @@ func (s *AccountHandlerSuite) TestRegisterExternalAccount_NorthwindFailure() {
 	s.Equal(http.StatusServiceUnavailable, rec.Code)
 	s.Contains(rec.Body.String(), "Could not connect to Northwind Bank")
 }
+
+func (s *AccountHandlerSuite) TestInitiateExternalTransfer_Success() {
+	fromAccountID := uuid.New()
+	toExternalAccountID := uuid.New()
+	idempotencyKey := uuid.New().String()
+
+	reqBody := dto.InitiateExternalTransferRequest{
+		ToExternalAccountID: toExternalAccountID.String(),
+		Amount:              "150.75",
+		Description:         "Payment to vendor",
+		TransferType:        "standard",
+	}
+
+	expectedTransfer := &models.Transfer{
+		ID:                  uuid.New(),
+		FromAccountID:       fromAccountID,
+		ToExternalAccountID: &toExternalAccountID,
+		Amount:              decimal.NewFromFloat(150.75),
+		Status:              "processing",
+	}
+
+	s.mockAccountService.EXPECT().
+		InitiateExternalTransfer(gomock.Any(), s.testUserID, fromAccountID, toExternalAccountID, gomock.Any(), reqBody.Description, reqBody.TransferType, idempotencyKey).
+		Return(expectedTransfer, nil)
+
+	c, rec := s.createContextWithAuth("POST", "/accounts/"+fromAccountID.String()+"/external-transfer", reqBody, s.testUserID, "user")
+	c.SetParamNames("accountId")
+	c.SetParamValues(fromAccountID.String())
+	c.Request().Header.Set("Idempotency-Key", idempotencyKey)
+
+	err := s.handler.InitiateExternalTransfer(c)
+	s.NoError(err)
+	s.Equal(http.StatusAccepted, rec.Code)
+
+	var resp models.Transfer
+	err = json.Unmarshal(rec.Body.Bytes(), &resp)
+	s.NoError(err)
+	s.Equal(expectedTransfer.ID, resp.ID)
+	s.Equal("processing", resp.Status)
+}
+
+func (s *AccountHandlerSuite) TestInitiateExternalTransfer_InsufficientFunds() {
+	fromAccountID := uuid.New()
+	toExternalAccountID := uuid.New()
+	idempotencyKey := uuid.New().String()
+
+	reqBody := dto.InitiateExternalTransferRequest{
+		ToExternalAccountID: toExternalAccountID.String(),
+		Amount:              "10000.00",
+		Description:         "Large payment",
+		TransferType:        "express",
+	}
+
+	s.mockAccountService.EXPECT().
+		InitiateExternalTransfer(gomock.Any(), s.testUserID, fromAccountID, toExternalAccountID, gomock.Any(), reqBody.Description, reqBody.TransferType, idempotencyKey).
+		Return(nil, services.ErrInsufficientFunds)
+
+	c, rec := s.createContextWithAuth("POST", "/accounts/"+fromAccountID.String()+"/external-transfer", reqBody, s.testUserID, "user")
+	c.SetParamNames("accountId")
+	c.SetParamValues(fromAccountID.String())
+	c.Request().Header.Set("Idempotency-Key", idempotencyKey)
+
+	err := s.handler.InitiateExternalTransfer(c)
+	s.NoError(err)
+	s.Equal(http.StatusUnprocessableEntity, rec.Code)
+
+	var errorResp ErrorResponse
+	err = json.Unmarshal(rec.Body.Bytes(), &errorResp)
+	s.NoError(err)
+	s.Equal("TRANSFER_004", errorResp.Error.Code)
+}
+
+func (s *AccountHandlerSuite) TestInitiateExternalTransfer_MissingIdempotencyKey() {
+	fromAccountID := uuid.New()
+	reqBody := dto.InitiateExternalTransferRequest{
+		ToExternalAccountID: uuid.New().String(),
+		Amount:              "100.00",
+		Description:         "Payment",
+		TransferType:        "standard",
+	}
+
+	c, rec := s.createContextWithAuth("POST", "/accounts/"+fromAccountID.String()+"/external-transfer", reqBody, s.testUserID, "user")
+	c.SetParamNames("accountId")
+	c.SetParamValues(fromAccountID.String())
+
+	err := s.handler.InitiateExternalTransfer(c)
+	s.NoError(err)
+	s.Equal(http.StatusBadRequest, rec.Code)
+	s.Contains(rec.Body.String(), "Idempotency-Key header is required")
+}

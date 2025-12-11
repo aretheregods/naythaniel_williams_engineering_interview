@@ -62,3 +62,18 @@ func (mr *MockNorthwindClientInterfaceMockRecorder) CreateExternalAccount(ctx, d
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExternalAccount", reflect.TypeOf((*MockNorthwindClientInterface)(nil).CreateExternalAccount), ctx, details)
 }
+
+// InitiateTransfer mocks base method.
+func (m *MockNorthwindClientInterface) InitiateTransfer(ctx context.Context, req *dto.NorthwindInitiateTransferRequest) (*dto.NorthwindInitiateTransferResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InitiateTransfer", ctx, req)
+	ret0, _ := ret[0].(*dto.NorthwindInitiateTransferResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InitiateTransfer indicates an expected call of InitiateTransfer.
+func (mr *MockNorthwindClientInterfaceMockRecorder) InitiateTransfer(ctx, req interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitiateTransfer", reflect.TypeOf((*MockNorthwindClientInterface)(nil).InitiateTransfer), ctx, req)
+}
