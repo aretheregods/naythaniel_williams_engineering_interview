@@ -66,6 +66,7 @@ func main() {
 	accountRepo := repositories.NewAccountRepository(db)
 	transactionRepo := repositories.NewTransactionRepository(db)
 	transferRepo := repositories.NewTransferRepository(db)
+	externalAccountRepo := repositories.NewExternalAccountRepository(db)
 	processingQueueRepo := repositories.NewProcessingQueueRepository(db)
 
 	// Initialize services
@@ -114,6 +115,7 @@ func main() {
 	// Customer management services
 	customerSearchService := services.NewCustomerSearchService(userRepo)
 	customerProfileService := services.NewCustomerProfileService(userRepo, accountRepo, auditService)
+	externalAccountService := services.NewExternalAccountService(externalAccountRepo, northwindClient)
 	accountAssociationService := services.NewAccountAssociationService(userRepo, accountRepo, auditService, slog.Default())
 	customerLogger := services.NewCustomerLogger(slog.Default())
 
@@ -129,7 +131,7 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(authService)
 	adminHandler := handlers.NewAdminHandler(userRepo, auditLogRepo)
-	accountHandler := handlers.NewAccountHandler(accountService, auditLogger, prometheusMetrics)
+	accountHandler := handlers.NewAccountHandler(accountService, externalAccountService, auditLogger, prometheusMetrics)
 	transactionHandler := handlers.NewTransactionHandler(transactionRepo, accountRepo)
 	accountSummaryHandler := handlers.NewAccountSummaryHandler(accountSummaryService, accountMetricsService, statementService)
 	devHandler := handlers.NewDevHandler(transactionRepo, accountRepo)
@@ -207,6 +209,7 @@ func addAccountEndpoints(api *echo.Group, tokenService *services.TokenService, b
 	accountGroup.GET("/:accountId/transactions", transactionHandler.ListTransactions)
 	accountGroup.GET("/:accountId/transactions/:id", transactionHandler.GetTransaction)
 	accountGroup.POST("/:accountId/transfer", accountHandler.Transfer)
+	accountGroup.POST("/external", accountHandler.RegisterExternalAccount)
 
 	// Summary endpoints
 	accountGroup.GET("/summary", accountSummaryHandler.GetAccountSummary)
