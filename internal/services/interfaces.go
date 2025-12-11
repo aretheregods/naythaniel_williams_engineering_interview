@@ -209,4 +209,12 @@ type TransactionProcessingServiceInterface interface {
 type NorthwindClientInterface interface {
 	// HealthCheck performs a health check against the Northwind API.
 	HealthCheck(ctx context.Context) error
+	// CreateExternalAccount registers a new external account with the Northwind API.
+	CreateExternalAccount(ctx context.Context, details *dto.NorthwindCreateAccountRequest) (*dto.NorthwindExternalAccountResponse, error)
+}
+
+// ExternalAccountServiceInterface defines the contract for managing external accounts (payees).
+type ExternalAccountServiceInterface interface {
+	// Register creates a new external account by calling the Northwind API and saving it locally.
+	Register(ctx context.Context, userID uuid.UUID, req *dto.RegisterExternalAccountRequest) (*models.ExternalAccount, error)
 }
